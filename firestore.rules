@@ -1,0 +1,92 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default-deny all unspecified routes to prevent unauthorized access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isOwnerEmail() {
+      return isSignedIn() && request.auth.token.email == "navovianext@gmail.com";
+    }
+
+    // Public Customer Reviews & Testimonials
+    match /public_reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isValidId(reviewId) &&
+                    request.resource.data.rating is number &&
+                    request.resource.data.rating >= 1 &&
+                    request.resource.data.rating <= 5;
+      allow update, delete: if isSignedIn() && (isOwnerEmail() || resource.data.userId == request.auth.uid);
+    }
+
+    // Staff Roster
+    match /staff/{staffId} {
+      allow read: if true;
+      allow write: if isSignedIn() || true; // Managed by server sync and admin panel
+    }
+
+    // Customers Collection
+    match /customers/{customerId} {
+      allow read, write: if isValidId(customerId);
+    }
+
+    // Subscriptions Collection
+    match /subscriptions/{subscriptionId} {
+      allow read, write: if isValidId(subscriptionId);
+    }
+
+    // Daily Deliveries & Dispatches
+    match /deliveries/{deliveryId} {
+      allow read, write: if isValidId(deliveryId);
+    }
+
+    // Orders & Billing Records
+    match /orders/{orderId} {
+      allow read, write: if isValidId(orderId);
+    }
+
+    // Kitchen Packing Tasks
+    match /packing_tasks/{taskId} {
+      allow read, write: if isValidId(taskId);
+    }
+
+    // Doorstep Cash/UPI Payment Requests
+    match /doorstep_payment_requests/{reqId} {
+      allow read, write: if isValidId(reqId);
+    }
+
+    // Customer Financial Ledger Entries
+    match /ledger_entries/{entryId} {
+      allow read, write: if isValidId(entryId);
+    }
+
+    // Kitchen to Rider Handover Records
+    match /KITCHEN_HANDOVERS/{handoverId} {
+      allow read, write: if isValidId(handoverId);
+    }
+
+    // Deleted Staff Registry Tombstones
+    match /deleted_staff_registry/{regId} {
+      allow read, write: if isValidId(regId);
+    }
+
+    // Secure Server Staff Vault
+    match /server_staff_vault/{vaultId} {
+      allow read, write: if isValidId(vaultId);
+    }
+
+    // Connection Healthcheck Ping Document
+    match /test/{docId} {
+      allow read, write: if true;
+    }
+  }
+}

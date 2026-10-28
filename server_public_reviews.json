@@ -1,0 +1,82 @@
+[
+  {
+    "id": "rev_1792331133342",
+    "orderId": "",
+    "userId": "",
+    "userName": "Amit Kumar",
+    "rating": 5,
+    "comment": "Lajawaab swad! Ghar jaisa shuddh desi ghee ka khana.",
+    "tags": [
+      "Ghar Jaisa Swad 🏠"
+    ],
+    "mealSlot": "lunch",
+    "mealPlanName": "Pure Veg Premium Plan",
+    "date": "2026-10-18",
+    "createdAt": "2026-10-18T13:45:33.342Z",
+    "verified": true
+  },
+  {
+    "id": "rev_1791493317552",
+    "orderId": "",
+    "userId": "test_cust_1",
+    "userName": "Vikram Malhotra",
+    "rating": 5,
+    "comment": "शाम का खाना बहुत स्वादिष्ट था, पनीर टिक्का मसाला और गरमागरम रोटियां लाजवाब थीं!",
+    "tags": [
+      "Ghar Jaisa Swad 🏠",
+      "Hot & Fresh 🔥",
+      "Pure Desi Ghee 🌱"
+    ],
+    "mealSlot": "dinner",
+    "mealPlanName": "Pure Veg Premium Plan",
+    "date": "2026-10-08",
+    "createdAt": "2026-10-08T21:01:57.552Z",
+    "verified": true
+  },
+  {
+    "id": "rev_1",
+    "userName": "Navovia Next",
+    "rating": 5,
+    "comment": "दाल मखनी और शुद्ध देसी घी की रोटियां बिल्कुल माँ के हाथ जैसी हैं! भोजन हमेशा गर्म और सटीक समय पर डिलीवर होता है।",
+    "tags": [
+      "Ghar Jaisa Swad 🏠",
+      "Hot & Fresh 🔥",
+      "Pure Desi Ghee 🌱"
+    ],
+    "mealSlot": "lunch",
+    "mealPlanName": "Pure Veg Premium Plan",
+    "date": "2026-10-07",
+    "createdAt": "2026-10-07T13:15:00.000Z",
+    "verified": true
+  },
+  {
+    "id": "rev_2",
+    "userName": "Rohit K. Sharma",
+    "rating": 5,
+    "comment": "Office lunch ke liye best tiffin service in Gurugram NCR! Low oil, perfectly packed, zero hassle.",
+    "tags": [
+      "On-Time Delivery ⚡",
+      "Low Oil & Healthy 🥗"
+    ],
+    "mealSlot": "lunch",
+    "mealPlanName": "Diet & Fitness High-Protein Thali",
+    "date": "2026-10-06",
+    "createdAt": "2026-10-06T12:45:00.000Z",
+    "verified": true
+  },
+  {
+    "id": "rev_3",
+    "userName": "Priya Verma",
+    "rating": 5,
+    "comment": "कैलेंडर से मील पॉज/स्किप करने की सुविधा बहुत अच्छी है। जिस दिन बाहर जाना हो, पैसे नहीं कटते। 100% पारदर्शी!",
+    "tags": [
+      "Ghar Jaisa Swad 🏠",
+      "100% Transparent Wallet 👛"
+    ],
+    "mealSlot": "dinner",
+    "mealPlanName": "Jain Special Shuddha Thali",
+    "date": "2026-10-05",
+    "createdAt": "2026-10-05T20:10:00.000Z",
+    "verified": true
+  }
+]

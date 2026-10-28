@@ -1,0 +1,323 @@
+[
+  {
+    "id": "own",
+    "name": "Devi Ummang",
+    "hindiName": "मालिक",
+    "email": "navovianext@gmail.com",
+    "phone": "+91 9118409672",
+    "role": "owner",
+    "isOwner": true,
+    "userIds": [
+      "own",
+      "owner",
+      "navovia_admin",
+      "owner_master",
+      "navovianext",
+      "dpd111111",
+      "9118409672",
+      "+919118409672"
+    ],
+    "passwords": [
+      "Navovia@2026",
+      "1234",
+      "123456"
+    ],
+    "accessPin": "NAV-OWNER-01",
+    "salary": 100000,
+    "shift": "Full Day",
+    "zone": "All Zones (All-Access Master)",
+    "specialization": "Executive Founder & Master Owner - Navovia Next",
+    "status": "active",
+    "activeStatus": "active",
+    "assignedScopes": [
+      "all"
+    ]
+  },
+  {
+    "id": "DeviD",
+    "name": "Devi Prasad Deliwary",
+    "hindiName": "देवी प्रसाद (डिलीवरी पार्टनर)",
+    "email": "devid@tiffinmate.com",
+    "phone": "+91 9118409672",
+    "role": "delivery",
+    "userIds": [
+      "devid",
+      "devi prasad",
+      "devi prasad deliwary",
+      "9118409672",
+      "+919118409672",
+      "delivery",
+      "rider",
+      "devi",
+      "919118409672",
+      "devid@tiffinmate.com"
+    ],
+    "passwords": [
+      "DeviD",
+      "devid",
+      "1234",
+      "123456"
+    ],
+    "accessPin": "DeviD",
+    "salary": 18000,
+    "shift": "Daily Dispatch (6 AM - 2 PM)",
+    "zone": "All Zones (All-Access Master)",
+    "specialization": "Express Doorstep Delivery",
+    "status": "active",
+    "activeStatus": "active",
+    "assignedScopes": [],
+    "assignedHelperIds": [],
+    "assignedHelperNames": []
+  },
+  {
+    "id": "DeviM",
+    "name": "Devi Prasad",
+    "hindiName": "देवी प्रसाद (मैनेजर)",
+    "email": "devim@tiffinmate.com",
+    "phone": "+91 9118409672",
+    "role": "manager",
+    "managerLevel": "level_1_general_operations",
+    "assignedScopes": [
+      "cook_assignment",
+      "rider_assignment",
+      "vendor_procurement",
+      "inventory_stock",
+      "customer_billing"
+    ],
+    "userIds": [
+      "devim",
+      "devi prasad",
+      "9118409672",
+      "+919118409672",
+      "manager",
+      "devi",
+      "919118409672",
+      "devim@tiffinmate.com"
+    ],
+    "passwords": [
+      "DeviM",
+      "1234",
+      "devim",
+      "123456"
+    ],
+    "accessPin": "DeviM",
+    "salary": 38000,
+    "shift": "General Shift (7 AM - 4 PM)",
+    "zone": "Central Kitchen Operations",
+    "specialization": "Kitchen Operations & Staff Oversight",
+    "status": "active",
+    "activeStatus": "active",
+    "assignedHelperIds": [],
+    "assignedHelperNames": []
+  },
+  {
+    "id": "C",
+    "name": "Devi Prasad Cook",
+    "hindiName": "देवी प्रसाद (मास्टर शेफ)",
+    "email": "cook@tiffinmate.com",
+    "phone": "+91 9118409672",
+    "role": "cook",
+    "userIds": [
+      "c",
+      "c",
+      "c",
+      "9118409672",
+      "+919118409672",
+      "+91 9118409672",
+      "devi",
+      "devi prasad cook",
+      "919118409672",
+      "cook",
+      "cook@tiffinmate.com"
+    ],
+    "passwords": [
+      "C",
+      "1234"
+    ],
+    "accessPin": "C",
+    "salary": 28000,
+    "shift": "Morning & Evening Cooking (5 AM - 2 PM)",
+    "zone": "Master Stove & Gravy Station",
+    "specialization": "North Indian Curries, Dal Makhani & Special Thali",
+    "status": "active",
+    "activeStatus": "active",
+    "assignedScopes": [],
+    "joiningDate": "2026-09-29",
+    "createdAt": "2026-09-29T10:38:52.004Z",
+    "addedByManagerId": "DeviM",
+    "addedByManagerName": "Devi Prasad",
+    "idProofType": "Aadhaar Card",
+    "idProofNumber": "",
+    "assignedHelperIds": [
+      "TM-CK-600"
+    ],
+    "assignedHelperNames": [
+      "Devi (Devi)"
+    ],
+    "assignedCookId": "",
+    "assignedCookName": "",
+    "assignedManagerId": "DeviM",
+    "assignedManagerName": "Devi Prasad"
+  },
+  {
+    "id": "V",
+    "name": "Devi Mandi Vendor",
+    "hindiName": "देवी मंडी वेंडर (सप्लायर)",
+    "email": "vendor@tiffinmate.com",
+    "phone": "+91 9118409672",
+    "role": "vendor",
+    "userIds": [
+      "v",
+      "devi",
+      "9118409672",
+      "+919118409672",
+      "vendor",
+      "supplier",
+      "devi mandi vendor",
+      "919118409672",
+      "vendor@tiffinmate.com"
+    ],
+    "passwords": [
+      "V",
+      "v",
+      "1234",
+      "123456"
+    ],
+    "accessPin": "V",
+    "shift": "Daily Supplies (6 AM - 10 AM)",
+    "zone": "Mandi Wholesale Hub",
+    "specialization": "Fresh Vegetables, Grains, Atta, Rice & Pulses",
+    "status": "active",
+    "activeStatus": "active",
+    "assignedScopes": [],
+    "assignedHelperIds": [],
+    "assignedHelperNames": []
+  },
+  {
+    "id": "I",
+    "name": "Devi Prasad Inventory",
+    "hindiName": "देवी प्रसाद (इन्वेंट्री स्टोरकीपर)",
+    "email": "inventory@tiffinmate.com",
+    "phone": "+91 9118409672",
+    "role": "inventory",
+    "userIds": [
+      "i",
+      "devi",
+      "9118409672",
+      "+919118409672",
+      "inventory",
+      "store",
+      "devi prasad inventory",
+      "919118409672",
+      "inventory@tiffinmate.com"
+    ],
+    "passwords": [
+      "I",
+      "i",
+      "1234",
+      "123456"
+    ],
+    "accessPin": "I",
+    "salary": 20000,
+    "shift": "Store Receiving & Stock Prep",
+    "zone": "Raw Materials Godown",
+    "specialization": "Pantry Store, Perishables & Packaging Stock",
+    "status": "active",
+    "activeStatus": "active",
+    "assignedScopes": [],
+    "assignedHelperIds": [],
+    "assignedHelperNames": []
+  },
+  {
+    "id": "TM-CK-600",
+    "name": "Devi",
+    "hindiName": "Devi",
+    "email": "",
+    "phone": "+91 9118409672",
+    "role": "helper",
+    "userIds": [
+      "h",
+      "tm-ck-600",
+      "tm-ck-600",
+      "9118409672",
+      "+919118409672",
+      "+91 9118409672",
+      "devi",
+      "devi",
+      "919118409672"
+    ],
+    "passwords": [
+      "H",
+      "1234"
+    ],
+    "accessPin": "H",
+    "specialization": "Tiffin Packing & Sealing Lead",
+    "zone": "All Zones",
+    "shift": "Morning (6:00 AM - 2:00 PM)",
+    "salary": 16000,
+    "assignedScopes": [],
+    "status": "active",
+    "activeStatus": "active",
+    "joiningDate": "2026-09-29",
+    "createdAt": "2026-09-29T11:27:13.235Z",
+    "addedByManagerId": "DeviM",
+    "addedByManagerName": "Devi Prasad",
+    "idProofType": "Aadhaar Card",
+    "idProofNumber": "",
+    "assignedHelperIds": [],
+    "assignedHelperNames": [],
+    "assignedCookId": "C",
+    "assignedCookName": "Devi Prasad Cook",
+    "assignedManagerId": "DeviM",
+    "assignedManagerName": "Devi Prasad"
+  },
+  {
+    "id": "NIR8800",
+    "name": "NIR Cloud Kitchen Partner",
+    "hindiName": "NIR क्लाउड किचन वेंडर पार्टनर",
+    "email": "nir8800@tiffinmate.com",
+    "phone": "+91 9118409672",
+    "role": "vendor",
+    "userIds": [
+      "nir8800",
+      "NIR8800",
+      "8800",
+      "nir"
+    ],
+    "passwords": [
+      "Nir12388001",
+      "nir12388001"
+    ],
+    "accessPin": "8800",
+    "shift": "All Day Cloud Kitchen (7 AM - 11 PM)",
+    "zone": "Central Cloud Kitchen Sector 22",
+    "specialization": "Pure Desi Ghee Thalis, Zomato/Swiggy 3P & Tiffin Production",
+    "status": "active",
+    "activeStatus": "active",
+    "companyName": "NIR Cloud Kitchen & Food Production Hub",
+    "contactPerson": "Kitchen Operations Head",
+    "gstin": "07AAACN8800F1ZV",
+    "upiId": "nir8800@upi",
+    "bankDetails": {
+      "accountNumber": "919118409672",
+      "ifsc": "PYTM0123456",
+      "bankName": "Paytm Payments Bank / HDFC"
+    },
+    "wallet": {
+      "balance": 5480,
+      "reserveAmount": 2000,
+      "tenDayHoldAmount": 1850,
+      "eligibleMondayPayout": 1630,
+      "lastSettlementDate": "2026-10-19",
+      "billingCycle": "Friday to Thursday",
+      "payoutDay": "Monday"
+    },
+    "assignedScopes": [
+      "orders",
+      "rate_card",
+      "wallet",
+      "inventory",
+      "profile"
+    ]
+  }
+]

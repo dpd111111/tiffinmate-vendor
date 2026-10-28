@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="gradBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2E7D32"/>
+      <stop offset="50%" stop-color="#388E3C"/>
+      <stop offset="100%" stop-color="#1B5E20"/>
+    </linearGradient>
+    <linearGradient id="gradGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFD54F"/>
+      <stop offset="100%" stop-color="#FFA000"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- App Icon Background -->
+  <rect width="512" height="512" rx="115" fill="url(#gradBg)"/>
+
+  <!-- Subtle Inner Border -->
+  <rect x="16" y="16" width="480" height="480" rx="100" fill="none" stroke="#81C784" stroke-width="4" stroke-opacity="0.4"/>
+
+  <!-- Tiffin Box / Tiered Food Carrier Graphic -->
+  <g filter="url(#shadow)" transform="translate(0, -10)">
+    <!-- Tiffin Top Handle -->
+    <path d="M216 110 C216 90 296 90 296 110 L296 135 L216 135 Z" fill="none" stroke="url(#gradGold)" stroke-width="14" stroke-linecap="round"/>
+    <circle cx="256" cy="85" r="14" fill="url(#gradGold)"/>
+
+    <!-- Clamp Straps Left & Right -->
+    <rect x="135" y="160" width="14" height="230" rx="7" fill="#C8E6C9" opacity="0.9"/>
+    <rect x="363" y="160" width="14" height="230" rx="7" fill="#C8E6C9" opacity="0.9"/>
+
+    <!-- Tiffin Tier 1 (Top Tier) -->
+    <rect x="156" y="145" width="200" height="65" rx="14" fill="#FFFFFF"/>
+    <rect x="166" y="155" width="180" height="8" rx="4" fill="#E8F5E9"/>
+    
+    <!-- Tiffin Tier 2 (Middle Tier) -->
+    <rect x="156" y="222" width="200" height="65" rx="14" fill="#FFFFFF"/>
+    <rect x="166" y="232" width="180" height="8" rx="4" fill="#FFF8E1"/>
+    <!-- Golden Accent Line -->
+    <path d="M190 255 L322 255" stroke="url(#gradGold)" stroke-width="6" stroke-linecap="round"/>
+
+    <!-- Tiffin Tier 3 (Bottom Tier) -->
+    <rect x="156" y="299" width="200" height="75" rx="14" fill="#FFFFFF"/>
+    <rect x="166" y="309" width="180" height="8" rx="4" fill="#E8F5E9"/>
+    <circle cx="256" cy="342" r="10" fill="#2E7D32"/>
+
+    <!-- Fresh Steam Leaves (Fresh & Pure Indicator) -->
+    <path d="M256 125 C256 125 240 100 240 80 C256 80 272 100 256 125 Z" fill="#81C784" opacity="0.8"/>
+  </g>
+
+  <!-- App Label at Bottom -->
+  <text x="256" y="445" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="42" fill="#FFFFFF" letter-spacing="1.5">
+    Tiffin<tspan fill="#FFD54F">Mate</tspan>
+  </text>
+  <text x="256" y="475" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="700" font-size="16" fill="#C8E6C9" letter-spacing="3">
+    CUSTOMER APP
+  </text>
+</svg>

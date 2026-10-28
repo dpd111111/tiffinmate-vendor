@@ -1,0 +1,129 @@
+Item ID,Dish Name,Hindi Name,Category,Portion Size,Listing Price (₹),Vendor Payout Rate (₹),In Stock,Last Updated
+mon_aloo_matar,Aloo Matar,आलू मटर,सोमवार का मेनू,Quarter,149,50,YES,2026-10-28
+mon_aloo_matar,Aloo Matar,आलू मटर,सोमवार का मेनू,Half,249,85,YES,2026-10-28
+mon_aloo_matar,Aloo Matar,आलू मटर,सोमवार का मेनू,Full,399,135,YES,2026-10-28
+mon_yellow_dal_tadka,Yellow Dal Tadka,येलो दाल तड़का,सोमवार का मेनू,Quarter,129,50,YES,2026-10-28
+mon_yellow_dal_tadka,Yellow Dal Tadka,येलो दाल तड़का,सोमवार का मेनू,Half,199,70,YES,2026-10-28
+mon_yellow_dal_tadka,Yellow Dal Tadka,येलो दाल तड़का,सोमवार का मेनू,Full,299,105,YES,2026-10-28
+mon_kadhai_paneer,Kadhai Paneer,कढ़ाई पनीर,सोमवार का मेनू,Quarter,169,65,YES,2026-10-28
+mon_kadhai_paneer,Kadhai Paneer,कढ़ाई पनीर,सोमवार का मेनू,Half,249,95,YES,2026-10-28
+mon_kadhai_paneer,Kadhai Paneer,कढ़ाई पनीर,सोमवार का मेनू,Full,349,130,YES,2026-10-28
+mon_kadhai_paneer_rice_bowl,Kadhai Paneer with Rice Bowl,कढ़ाई पनीर विथ राइस बाउल,सोमवार का मेनू,Quarter,199,75,YES,2026-10-28
+mon_kadhai_paneer_rice_bowl,Kadhai Paneer with Rice Bowl,कढ़ाई पनीर विथ राइस बाउल,सोमवार का मेनू,Half,299,115,YES,2026-10-28
+mon_kadhai_paneer_rice_bowl,Kadhai Paneer with Rice Bowl,कढ़ाई पनीर विथ राइस बाउल,सोमवार का मेनू,Full,399,150,YES,2026-10-28
+mon_yellow_dal_rice_bowl,Yellow Dal Tadka with Rice Bowl,दाल तड़का विथ राइस बाउल,सोमवार का मेनू,Quarter,169,60,YES,2026-10-28
+mon_yellow_dal_rice_bowl,Yellow Dal Tadka with Rice Bowl,दाल तड़का विथ राइस बाउल,सोमवार का मेनू,Half,229,85,YES,2026-10-28
+mon_yellow_dal_rice_bowl,Yellow Dal Tadka with Rice Bowl,दाल तड़का विथ राइस बाउल,सोमवार का मेनू,Full,319,120,YES,2026-10-28
+mon_aloo_matar_rice_bowl,Aloo Matar with Rice Bowl,आलू मटर विथ राइस बाउल,सोमवार का मेनू,Quarter,149,55,YES,2026-10-28
+mon_aloo_matar_rice_bowl,Aloo Matar with Rice Bowl,आलू मटर विथ राइस बाउल,सोमवार का मेनू,Half,239,90,YES,2026-10-28
+mon_aloo_matar_rice_bowl,Aloo Matar with Rice Bowl,आलू मटर विथ राइस बाउल,सोमवार का मेनू,Full,329,125,YES,2026-10-28
+mon_daily_thali,Monday Daily Thali,सोमवार डेली थाली,सोमवार का मेनू,Standard,249,80,YES,2026-10-28
+mon_deluxe_thali,Monday Deluxe Thali,सोमवार डीलक्स थाली,सोमवार का मेनू,Standard,299,100,YES,2026-10-28
+mon_premium_thali,Monday Premium Thali,सोमवार प्रीमियम थाली,सोमवार का मेनू,Standard,399,135,YES,2026-10-28
+tue_bhindi_masala,Bhindi Masala,भिंडी मसाला,मंगलवार का मेनू,Quarter,149,50,YES,2026-10-28
+tue_bhindi_masala,Bhindi Masala,भिंडी मसाला,मंगलवार का मेनू,Half,249,85,YES,2026-10-28
+tue_bhindi_masala,Bhindi Masala,भिंडी मसाला,मंगलवार का मेनू,Full,399,135,YES,2026-10-28
+tue_dal_fry,Dal Fry,दाल फ्राई,मंगलवार का मेनू,Quarter,129,50,YES,2026-10-28
+tue_dal_fry,Dal Fry,दाल फ्राई,मंगलवार का मेनू,Half,199,70,YES,2026-10-28
+tue_dal_fry,Dal Fry,दाल फ्राई,मंगलवार का मेनू,Full,299,105,YES,2026-10-28
+tue_shahi_paneer,Shahi Paneer,शाही पनीर,मंगलवार का मेनू,Quarter,169,65,YES,2026-10-28
+tue_shahi_paneer,Shahi Paneer,शाही पनीर,मंगलवार का मेनू,Half,249,95,YES,2026-10-28
+tue_shahi_paneer,Shahi Paneer,शाही पनीर,मंगलवार का मेनू,Full,349,130,YES,2026-10-28
+tue_shahi_paneer_rice_bowl,Shahi Paneer with Rice Bowl,शाही पनीर विथ राइस बाउल,मंगलवार का मेनू,Quarter,199,75,YES,2026-10-28
+tue_shahi_paneer_rice_bowl,Shahi Paneer with Rice Bowl,शाही पनीर विथ राइस बाउल,मंगलवार का मेनू,Half,299,115,YES,2026-10-28
+tue_shahi_paneer_rice_bowl,Shahi Paneer with Rice Bowl,शाही पनीर विथ राइस बाउल,मंगलवार का मेनू,Full,399,150,YES,2026-10-28
+tue_dal_fry_rice_bowl,Dal Fry with Rice Bowl,दाल फ्राई विथ राइस बाउल,मंगलवार का मेनू,Quarter,169,60,YES,2026-10-28
+tue_dal_fry_rice_bowl,Dal Fry with Rice Bowl,दाल फ्राई विथ राइस बाउल,मंगलवार का मेनू,Half,229,85,YES,2026-10-28
+tue_dal_fry_rice_bowl,Dal Fry with Rice Bowl,दाल फ्राई विथ राइस बाउल,मंगलवार का मेनू,Full,319,120,YES,2026-10-28
+tue_daily_thali,Tuesday Daily Thali,मंगलवार डेली थाली,मंगलवार का मेनू,Standard,249,80,YES,2026-10-28
+tue_deluxe_thali,Tuesday Deluxe Thali,मंगलवार डीलक्स थाली,मंगलवार का मेनू,Standard,299,100,YES,2026-10-28
+tue_premium_thali,Tuesday Premium Thali,मंगलवार प्रीमियम थाली,मंगलवार का मेनू,Standard,399,135,YES,2026-10-28
+wed_lauki_kofta,Lauki Kofta / Dum Aloo,लौकी कोफ्ता / दम आलू,बुधवार का मेनू,Quarter,149,50,YES,2026-10-28
+wed_lauki_kofta,Lauki Kofta / Dum Aloo,लौकी कोफ्ता / दम आलू,बुधवार का मेनू,Half,249,85,YES,2026-10-28
+wed_lauki_kofta,Lauki Kofta / Dum Aloo,लौकी कोफ्ता / दम आलू,बुधवार का मेनू,Full,399,135,YES,2026-10-28
+wed_moong_dal_fry,Moong Dal Fry,मूंग दाल फ्राई,बुधवार का मेनू,Quarter,129,50,YES,2026-10-28
+wed_moong_dal_fry,Moong Dal Fry,मूंग दाल फ्राई,बुधवार का मेनू,Half,199,70,YES,2026-10-28
+wed_moong_dal_fry,Moong Dal Fry,मूंग दाल फ्राई,बुधवार का मेनू,Full,299,105,YES,2026-10-28
+wed_paneer_do_pyaza,Paneer Do Pyaza,पनीर दो प्याज़ा,बुधवार का मेनू,Quarter,169,65,YES,2026-10-28
+wed_paneer_do_pyaza,Paneer Do Pyaza,पनीर दो प्याज़ा,बुधवार का मेनू,Half,249,95,YES,2026-10-28
+wed_paneer_do_pyaza,Paneer Do Pyaza,पनीर दो प्याज़ा,बुधवार का मेनू,Full,349,130,YES,2026-10-28
+wed_daily_thali,Wednesday Daily Thali,बुधवार डेली थाली,बुधवार का मेनू,Standard,249,80,YES,2026-10-28
+wed_deluxe_thali,Wednesday Deluxe Thali,बुधवार डीलक्स थाली,बुधवार का मेनू,Standard,299,100,YES,2026-10-28
+wed_premium_thali,Wednesday Premium Thali,बुधवार प्रीमियम थाली,बुधवार का मेनू,Standard,399,135,YES,2026-10-28
+thu_kadhi_pakoda,Kadhi Pakoda,कढ़ी पकोड़ा,गुरुवार का मेनू,Quarter,149,50,YES,2026-10-28
+thu_kadhi_pakoda,Kadhi Pakoda,कढ़ी पकोड़ा,गुरुवार का मेनू,Half,239,80,YES,2026-10-28
+thu_kadhi_pakoda,Kadhi Pakoda,कढ़ी पकोड़ा,गुरुवार का मेनू,Full,329,120,YES,2026-10-28
+thu_chana_dal_fry,Chana Dal Fry,चना दाल फ्राई,गुरुवार का मेनू,Quarter,129,50,YES,2026-10-28
+thu_chana_dal_fry,Chana Dal Fry,चना दाल फ्राई,गुरुवार का मेनू,Half,199,70,YES,2026-10-28
+thu_chana_dal_fry,Chana Dal Fry,चना दाल फ्राई,गुरुवार का मेनू,Full,299,105,YES,2026-10-28
+thu_palak_paneer,Palak Paneer,पालक पनीर,गुरुवार का मेनू,Quarter,169,65,YES,2026-10-28
+thu_palak_paneer,Palak Paneer,पालक पनीर,गुरुवार का मेनू,Half,249,95,YES,2026-10-28
+thu_palak_paneer,Palak Paneer,पालक पनीर,गुरुवार का मेनू,Full,349,130,YES,2026-10-28
+thu_daily_thali,Thursday Daily Thali,गुरुवार डेली थाली,गुरुवार का मेनू,Standard,249,80,YES,2026-10-28
+thu_deluxe_thali,Thursday Deluxe Thali,गुरुवार डीलक्स थाली,गुरुवार का मेनू,Standard,299,100,YES,2026-10-28
+thu_premium_thali,Thursday Premium Thali,गुरुवार प्रीमियम थाली,गुरुवार का मेनू,Standard,399,135,YES,2026-10-28
+fri_baingan_bharta,Baingan Bharta,बैंगन भरता,शुक्रवार का मेनू,Quarter,149,55,YES,2026-10-28
+fri_baingan_bharta,Baingan Bharta,बैंगन भरता,शुक्रवार का मेनू,Half,249,90,YES,2026-10-28
+fri_baingan_bharta,Baingan Bharta,बैंगन भरता,शुक्रवार का मेनू,Full,399,140,YES,2026-10-28
+fri_butter_dal_fry,Butter Dal Fry,बटर दाल फ्राई,शुक्रवार का मेनू,Quarter,129,50,YES,2026-10-28
+fri_butter_dal_fry,Butter Dal Fry,बटर दाल फ्राई,शुक्रवार का मेनू,Half,199,75,YES,2026-10-28
+fri_butter_dal_fry,Butter Dal Fry,बटर दाल फ्राई,शुक्रवार का मेनू,Full,299,110,YES,2026-10-28
+fri_paneer_bhurji,Paneer Bhurji,पनीर भुर्जी,शुक्रवार का मेनू,Quarter,199,75,YES,2026-10-28
+fri_paneer_bhurji,Paneer Bhurji,पनीर भुर्जी,शुक्रवार का मेनू,Half,299,115,YES,2026-10-28
+fri_paneer_bhurji,Paneer Bhurji,पनीर भुर्जी,शुक्रवार का मेनू,Full,399,150,YES,2026-10-28
+fri_daily_thali,Friday Daily Thali,शुक्रवार डेली थाली,शुक्रवार का मेनू,Standard,249,80,YES,2026-10-28
+fri_deluxe_thali,Friday Deluxe Thali,शुक्रवार डीलक्स थाली,शुक्रवार का मेनू,Standard,299,100,YES,2026-10-28
+fri_premium_thali,Friday Premium Thali,शुक्रवार प्रीमियम थाली,शुक्रवार का मेनू,Standard,399,135,YES,2026-10-28
+sat_aloo_gobi,Aloo Gobi,आलू गोभी,शनिवार का मेनू,Quarter,149,50,YES,2026-10-28
+sat_aloo_gobi,Aloo Gobi,आलू गोभी,शनिवार का मेनू,Half,249,85,YES,2026-10-28
+sat_aloo_gobi,Aloo Gobi,आलू गोभी,शनिवार का मेनू,Full,399,135,YES,2026-10-28
+sat_butter_paneer_masala,Butter Paneer Masala,बटर पनीर मसाला,शनिवार का मेनू,Quarter,159,60,YES,2026-10-28
+sat_butter_paneer_masala,Butter Paneer Masala,बटर पनीर मसाला,शनिवार का मेनू,Half,239,90,YES,2026-10-28
+sat_butter_paneer_masala,Butter Paneer Masala,बटर पनीर मसाला,शनिवार का मेनू,Full,329,125,YES,2026-10-28
+sat_daily_thali,Saturday Daily Thali,शनिवार डेली थाली,शनिवार का मेनू,Standard,249,80,YES,2026-10-28
+sat_deluxe_thali,Saturday Deluxe Thali,शनिवार डीलक्स थाली,शनिवार का मेनू,Standard,299,100,YES,2026-10-28
+sat_premium_thali,Saturday Premium Thali,शनिवार प्रीमियम थाली,शनिवार का मेनू,Standard,399,135,YES,2026-10-28
+sun_aloo_jeera,Aloo Jeera,आलू जीरा,रविवार का मेनू,Quarter,99,50,YES,2026-10-28
+sun_aloo_jeera,Aloo Jeera,आलू जीरा,रविवार का मेनू,Half,169,60,YES,2026-10-28
+sun_aloo_jeera,Aloo Jeera,आलू जीरा,रविवार का मेनू,Full,249,90,YES,2026-10-28
+sun_matar_paneer,Matar Paneer,मटर पनीर,रविवार का मेनू,Quarter,159,60,YES,2026-10-28
+sun_matar_paneer,Matar Paneer,मटर पनीर,रविवार का मेनू,Half,239,90,YES,2026-10-28
+sun_matar_paneer,Matar Paneer,मटर पनीर,रविवार का मेनू,Full,329,125,YES,2026-10-28
+sun_daily_thali,Sunday Daily Thali,रविवार डेली थाली,रविवार का मेनू,Standard,249,80,YES,2026-10-28
+sun_deluxe_thali,Sunday Deluxe Thali,रविवार डीलक्स थाली,रविवार का मेनू,Standard,299,100,YES,2026-10-28
+sun_premium_thali,Sunday Premium Thali,रविवार प्रीमियम थाली,रविवार का मेनू,Standard,399,135,YES,2026-10-28
+spl_veg_biryani_thali,Veg Biryani Thali (Biryani + Salad),वेज बिरयानी थाली (बिरयानी + सलाद),विशेष दैनिक थाली,Standard,299,95,YES,2026-10-28
+spl_no_onion_garlic_thali,Thali without Onion Garlic with Desi Ghee,बिना प्याज लहसुन थाली (शुद्ध देसी घी),विशेष दैनिक थाली,Standard,289,90,YES,2026-10-28
+brk_aloo_paratha,2 Aloo Paratha + Raita/Chutney,2 आलू पराठा + रायता/चटनी,नाश्ता एवं स्नैक्स,Standard,189,55,YES,2026-10-28
+brk_paneer_paratha,2 Paneer Paratha + Raita/Chutney,2 पनीर पराठा + रायता/चटनी,नाश्ता एवं स्नैक्स,Standard,249,75,YES,2026-10-28
+brk_gobi_paratha,2 Gobi Paratha + Sauce/Chutney/Raita,2 गोभी पराठा + चटनी/रायता,नाश्ता एवं स्नैक्स,Standard,219,65,YES,2026-10-28
+brk_veg_chilla,Veg Chilla (2 Pcs) + Sauce,वेज चीला (2 पीस) + सॉस,नाश्ता एवं स्नैक्स,Standard,159,50,YES,2026-10-28
+brk_aloo_kachori,Aloo Kachori (2 Pcs) + Chutney,आलू कचौड़ी (2 पीस) + चटनी,नाश्ता एवं स्नैक्स,Standard,159,50,YES,2026-10-28
+brk_veg_sandwich,Veg Sandwich (2 Pc - Plain),वेज सैंडविच (2 पीस),नाश्ता एवं स्नैक्स,Standard,119,50,YES,2026-10-28
+brk_veg_grilled_sandwich,Veg Grilled Sandwich (2 Pc),वेज ग्रिल्ड सैंडविच (2 पीस),नाश्ता एवं स्नैक्स,Standard,149,50,YES,2026-10-28
+brk_veg_burger,Veg Burger (1 Pc),वेज बर्गर (1 पीस),नाश्ता एवं स्नैक्स,Standard,129,50,YES,2026-10-28
+brk_cheese_burger,Cheese Burger (1 Pc),चीज़ बर्गर (1 पीस),नाश्ता एवं स्नैक्स,Standard,149,55,YES,2026-10-28
+brk_poha_combo,Veg Poha (250 g) + Desi Chai Combo,वेज पोहा (250g) + देसी चाय कॉम्बो,नाश्ता एवं स्नैक्स,Standard,149,50,YES,2026-10-28
+brk_upma_dahi,Veg Rawa Upma + Dahi,वेज रवा उपमा + दही,नाश्ता एवं स्नैक्स,Standard,159,50,YES,2026-10-28
+brk_korean_maggi,Korean Maggi,कोरियन मैगी,नाश्ता एवं स्नैक्स,Standard,149,50,YES,2026-10-28
+vrat_delux_thali,Delux Vrat Thali (Samak rice + aloo paneer + 2 kuttu chilla + raita),डीलक्स व्रत थाली (समाक राइस + आलू पनीर + 2 कुट्टू चीला + रायता),व्रत थाली एवं व्रत स्नैक्स,Standard,299,100,YES,2026-10-28
+vrat_classic_thali,Classic Vrat Thali (Samak rice + aloo sabji + 2 kuttu chilla + raita),क्लासिक व्रत थाली (समाक राइस + आलू सब्ज़ी + 2 कुट्टू चीला + रायता),व्रत थाली एवं व्रत स्नैक्स,Standard,249,85,YES,2026-10-28
+vrat_samak_khichdi,Samak Rice Khichdi Thali,समाक राइस खिचड़ी थाली,व्रत थाली एवं व्रत स्नैक्स,Standard,249,85,YES,2026-10-28
+vrat_sabudana_khichdi,Sabudana Khichdi + Raita Thali,साबूदाना खिचड़ी + रायता थाली,व्रत थाली एवं व्रत स्नैक्स,Standard,239,80,YES,2026-10-28
+vrat_aloo_pakoda_thali,Aloo Pakoda Vrat Thali (6 Pcs),आलू पकोड़ा व्रत थाली (6 पीस),व्रत थाली एवं व्रत स्नैक्स,Standard,239,80,YES,2026-10-28
+vrat_singhara_halwa,Singhara Atta Halwa (250 ml),सिंघाड़ा आटा हलवा (250 ml),व्रत थाली एवं व्रत स्नैक्स,Standard,249,85,YES,2026-10-28
+brd_tawa_roti,Tawa Roti / Butter Tawa Roti,तवा रोटी / बटर तवा रोटी,"ब्रेड्स, चावल और मीठा",Per Pc,12,4,YES,2026-10-28
+brd_tawa_roti,Tawa Roti / Butter Tawa Roti,तवा रोटी / बटर तवा रोटी,"ब्रेड्स, चावल और मीठा",Quarter,15,5,YES,2026-10-28
+brd_butter_ajwain_paratha,Butter Ajwain Paratha,बटर अजवाइन पराठा,"ब्रेड्स, चावल और मीठा",Per Pc,25,10,YES,2026-10-28
+brd_plain_rice,Plain Rice (300 g) / Jeera Rice (300 g),प्लेन राइस / जीरा राइस (300g),"ब्रेड्स, चावल और मीठा",300g,79,50,YES,2026-10-28
+brd_plain_rice,Plain Rice (300 g) / Jeera Rice (300 g),प्लेन राइस / जीरा राइस (300g),"ब्रेड्स, चावल और मीठा",Standard,89,50,YES,2026-10-28
+snack_desi_chai,Desi Cutting Chai / Special Tea,देसी स्पेशल चाय,नाश्ता व स्नैक्स,2 Cup,99,30,YES,2026-10-28
+snack_desi_chai,Desi Cutting Chai / Special Tea,देसी स्पेशल चाय,नाश्ता व स्नैक्स,4 Cup,169,60,YES,2026-10-28
+snack_desi_chai,Desi Cutting Chai / Special Tea,देसी स्पेशल चाय,नाश्ता व स्नैक्स,5 Cup,199,75,YES,2026-10-28
+brd_sweet_kheer,Sweet Kheer,मीठी खीर,"ब्रेड्स, चावल और मीठा",300g,149,50,YES,2026-10-28
+brd_sweet_kheer,Sweet Kheer,मीठी खीर,"ब्रेड्स, चावल और मीठा",500g,229,80,YES,2026-10-28
+brd_sweet_kheer,Sweet Kheer,मीठी खीर,"ब्रेड्स, चावल और मीठा",700g,329,115,YES,2026-10-28
+brd_suji_halwa,Suji Halwa,सूजी हलवा,"ब्रेड्स, चावल और मीठा",300g,149,50,YES,2026-10-28
+brd_suji_halwa,Suji Halwa,सूजी हलवा,"ब्रेड्स, चावल और मीठा",500g,229,75,YES,2026-10-28
+brd_suji_halwa,Suji Halwa,सूजी हलवा,"ब्रेड्स, चावल और मीठा",700g,329,110,YES,2026-10-28
+tea,Special Tea / Chai,चाय (Special Tea),नाश्ता व स्नैक्स,Standard,99,40,YES,2026-10-29

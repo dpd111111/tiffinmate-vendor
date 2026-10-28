@@ -1,0 +1,51 @@
+{
+  "vendorId": "NIR8800",
+  "orders": [
+    {
+      "id": "ord_3p_1793215126668_fzss",
+      "orderNumber": "#ZOM-TEST-99",
+      "source": "zomato",
+      "platformOrderId": "#ZOM-TEST-99",
+      "items": [
+        {
+          "itemId": "tea",
+          "itemName": "Special Tea / Chai",
+          "hindiName": "चाय (Special Tea)",
+          "portionSize": "Standard",
+          "quantity": 2,
+          "listingPrice": 99,
+          "vendorPayoutRate": 40,
+          "totalVendorPayout": 80
+        }
+      ],
+      "itemId": "tea",
+      "itemName": "Special Tea / Chai (Standard) x2",
+      "portionSize": "Standard",
+      "quantity": 2,
+      "listingPrice": 198,
+      "vendorPayoutRate": 40,
+      "totalVendorPayout": 80,
+      "status": "preparing",
+      "createdAt": "2026-10-28T19:18:46.668Z",
+      "timeSlot": "Immediate Dispatch (15-20 mins)",
+      "riderName": "ZOMATO Rider Assigned",
+      "riderEta": "12 mins",
+      "notes": "",
+      "payoutCreditedToWallet": false,
+      "isMultiItem": false
+    }
+  ],
+  "transactions": [],
+  "inventory": [],
+  "wallet": {
+    "totalLifetimeEarned": 0,
+    "currentBalance": 0,
+    "minimumReserve": 2000,
+    "tenDayHoldAmount": 0,
+    "lastSettlementDate": "None",
+    "billingCycle": "Friday to Thursday",
+    "payoutDay": "Monday"
+  },
+  "refundDeductions": [],
+  "pendingDishes": []
+}

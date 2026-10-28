@@ -1,0 +1,10 @@
+{
+  "name": "Remix TiffinMate by Navovia Next",
+  "description": "TiffinMate by Navovia Next: Enterprise homestyle tiffin subscription platform, smart kitchen terminal, and real-time rider tracking.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

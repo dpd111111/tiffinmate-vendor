@@ -1,0 +1,221 @@
+@import "tailwindcss";
+
+/* Mobile Smooth Performance & Zero-CLS Engine */
+html, body {
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
+  touch-action: pan-y;
+  background-color: #f8fafc;
+}
+
+/* Hardware accelerated smooth scrolling */
+* {
+  box-sizing: border-box;
+}
+
+/* Prevent image layout jumps */
+img {
+  content-visibility: auto;
+}
+
+/* Shimmer animation for instant premium skeleton loader */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* Smooth fade-in transition for loaded cards */
+.fade-in-card {
+  animation: fadeInCard 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeInCard {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ======================================================== */
+/* TIFFINMATE HYPER-REALISTIC ANIMATION & TRACKING PIPELINE */
+/* ======================================================== */
+
+@keyframes roadScroll {
+  0% { background-position-x: 0px; }
+  100% { background-position-x: -240px; }
+}
+.animate-road-scroll {
+  animation: roadScroll 1.2s linear infinite;
+}
+
+@keyframes heatShimmer {
+  0% { transform: translateY(0) scaleY(1); opacity: 0.25; }
+  50% { transform: translateY(-10px) scaleY(1.4) skewX(3deg); opacity: 0.7; }
+  100% { transform: translateY(-20px) scaleY(1); opacity: 0; }
+}
+.animate-heat-shimmer {
+  animation: heatShimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes rainFall {
+  0% { transform: translateY(-40px) translateX(15px); opacity: 0.85; }
+  100% { transform: translateY(240px) translateX(-35px); opacity: 0.15; }
+}
+.animate-rain-fall {
+  animation: rainFall 0.75s linear infinite;
+}
+
+@keyframes wiperSwing {
+  0%, 100% { transform: rotate(-45deg); }
+  50% { transform: rotate(45deg); }
+}
+.animate-wiper-swing {
+  transform-origin: 50% 100%;
+  animation: wiperSwing 1.1s ease-in-out infinite;
+}
+
+@keyframes wheelSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.animate-wheel-spin {
+  transform-origin: center;
+  animation: wheelSpin 0.6s linear infinite;
+}
+
+@keyframes trikeFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-3px); }
+}
+.animate-trike-float {
+  animation: trikeFloat 1.4s ease-in-out infinite;
+}
+
+@keyframes sweatDrip {
+  0% { transform: translateY(0px) scale(0.8); opacity: 0.95; }
+  100% { transform: translateY(20px) scale(1.1); opacity: 0; }
+}
+.animate-sweat-drip {
+  animation: sweatDrip 1.2s ease-in infinite;
+}
+
+@keyframes fogDrift {
+  0% { transform: translateX(120px); opacity: 0.35; }
+  50% { opacity: 0.75; }
+  100% { transform: translateX(-140px); opacity: 0.25; }
+}
+.animate-fog-drift {
+  animation: fogDrift 6s ease-in-out infinite alternate;
+}
+
+@keyframes steamRise {
+  0% { transform: translateY(0) scaleX(0.8); opacity: 0.85; }
+  50% { transform: translateY(-16px) scaleX(1.3) translateX(5px); opacity: 0.6; }
+  100% { transform: translateY(-32px) scaleX(1.6) translateX(-5px); opacity: 0; }
+}
+.animate-steam-rise {
+  animation: steamRise 1.6s ease-out infinite;
+}
+
+@keyframes flameFlicker {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.9; }
+  25% { transform: scale(1.15, 0.9) rotate(3deg); opacity: 1; }
+  50% { transform: scale(0.95, 1.15) rotate(-2deg); opacity: 0.85; }
+  75% { transform: scale(1.05, 1.05) rotate(1deg); opacity: 0.95; }
+}
+.animate-flame-flicker {
+  transform-origin: center bottom;
+  animation: flameFlicker 0.45s ease-in-out infinite alternate;
+}
+
+@keyframes bellRing {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(20deg); }
+  40% { transform: rotate(-20deg); }
+  60% { transform: rotate(14deg); }
+  80% { transform: rotate(-14deg); }
+}
+.animate-bell-ring {
+  transform-origin: top center;
+  animation: bellRing 0.8s ease-in-out infinite;
+}
+
+@keyframes confettiFall {
+  0% { transform: translateY(-30px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(320px) rotate(720deg); opacity: 0; }
+}
+.animate-confetti-fall {
+  animation: confettiFall 2.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
+}
+
+/* 2 COOKS + 2 HELPERS COMMERCIAL KITCHEN ANIMATIONS */
+@keyframes cookStir {
+  0%, 100% { transform: rotate(0deg) translate(0, 0); }
+  25% { transform: rotate(12deg) translate(2px, -1px); }
+  50% { transform: rotate(0deg) translate(4px, 1px); }
+  75% { transform: rotate(-12deg) translate(1px, -2px); }
+}
+.animate-cook-stir {
+  transform-origin: 30% 20%;
+  animation: cookStir 1.6s ease-in-out infinite;
+}
+
+@keyframes doughRoll {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-4px) rotate(6deg); }
+}
+.animate-dough-roll {
+  animation: doughRoll 1.1s ease-in-out infinite;
+}
+
+@keyframes rotiPuff {
+  0%, 100% { transform: scale(0.9, 0.9); opacity: 0.9; }
+  50% { transform: scale(1.18, 1.25); opacity: 1; }
+}
+.animate-roti-puff {
+  transform-origin: center;
+  animation: rotiPuff 2.2s ease-in-out infinite;
+}
+
+@keyframes garnishSprinkle {
+  0% { transform: translateY(-8px) scale(0.6); opacity: 0; }
+  40% { opacity: 1; }
+  100% { transform: translateY(8px) scale(1); opacity: 0; }
+}
+.animate-garnish-sprinkle {
+  animation: garnishSprinkle 1.4s ease-out infinite;
+}
+
+@keyframes clipLock {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.7); }
+}
+.animate-clip-lock {
+  animation: clipLock 2s ease-in-out infinite;
+}
+
+@keyframes chefNod {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(4deg) translateY(1px); }
+}
+.animate-chef-nod {
+  animation: chefNod 2.5s ease-in-out infinite;
+}

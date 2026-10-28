@@ -1,0 +1,39 @@
+{
+  "short_name": "NOV TIFFIN",
+  "name": "NOV TIFFIN - Daily Homestyle Tiffin & Meal Subscriptions",
+  "description": "NOV TIFFIN: Pure Desi Ghee homestyle tiffin meal subscriptions in Gurugram NCR with live tracking and daily wallet.",
+  "id": "/?mode=customer",
+  "start_url": "/?mode=customer",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F8FAFC",
+  "theme_color": "#2E7D32",
+  "categories": ["food", "lifestyle", "shopping"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

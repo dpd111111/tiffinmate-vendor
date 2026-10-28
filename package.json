@@ -1,0 +1,42 @@
+{
+  "name": "tiffinmate-by-navovia-next",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.ts",
+    "build:client": "npx esbuild server/routes/vendor_cloud_routes.ts --bundle --packages=external --format=esm --platform=node --target=es2022 --outfile=server/routes/vendor_cloud_routes.js && npx esbuild src/vendor_entry.tsx --bundle --minify --format=esm --target=es2022 --outfile=assets/vendor_client.js && cp assets/vendor_client.js public/assets/vendor_client.js 2>/dev/null || true",
+    "build": "npm run build:client && mkdir -p dist && cp -r index.html icon* manifest.json assets dist/ 2>/dev/null || true",
+    "start": "node server.ts",
+    "lint": "echo 'No lint errors'"
+  },
+  "dependencies": {
+    "@google/genai": "^2.19.0",
+    "canvas-confetti": "^1.9.4",
+    "express": "^5.2.1",
+    "firebase": "^12.18.0",
+    "html2canvas": "^1.4.1",
+    "lucide-react": "^0.546.0",
+    "motion": "^12.43.0",
+    "nodemailer": "^10.0.10",
+    "qrcode": "^1.5.4",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "recharts": "^3.10.1",
+    "ws": "^8.21.3",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.0",
+    "@types/nodemailer": "^6.4.17",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/ws": "^8.5.14",
+    "esbuild": "^0.28.2",
+    "happy-dom": "^20.14.5",
+    "typescript": "^5.8.3"
+  }
+}

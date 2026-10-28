@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#2E7D32" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="NOV TIFFIN" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>NOV TIFFIN – Vendor Partner Portal (वेंडर पोर्टल)</title>
+    <meta name="description" content="NOV TIFFIN by Navovia Next: Cloud Kitchen Vendor Partner Portal. Live 3P punch, automated order sync, digital rate card, and transparent wallet ledger." />
+    <meta property="og:title" content="NOV TIFFIN – Vendor Partner Portal" />
+    <meta property="og:description" content="Official Vendor Partner Portal for NOV TIFFIN by Navovia Next." />
+    <meta property="og:site_name" content="NOV TIFFIN" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="NOV TIFFIN – Vendor Partner Portal" />
+    <meta name="twitter:description" content="Cloud Kitchen Vendor Partner Portal. Live orders, rate card, and wallet." />
+
+    <!-- Schema.org Rich SEO Structured Data (Enables Google Search Star Rating & Public Reviews Snippet) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FoodEstablishment",
+      "name": "NOV TIFFIN",
+      "alternateName": "NOV TIFFIN by Navovia Next",
+      "description": "Daily authentic homestyle Indian tiffin meal subscription service with 100% pure desi ghee, fresh chakki atta, and live delivery tracking in Gurugram Delhi-NCR.",
+      "servesCuisine": "North Indian, Pure Vegetarian, Jain, Homestyle Thali",
+      "priceRange": "₹₹",
+      "telephone": "+91-9118409672",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Navovia Next Kitchen HQ",
+        "addressLocality": "Gurugram",
+        "addressRegion": "Haryana",
+        "postalCode": "122001",
+        "addressCountry": "IN"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": 28.4595,
+        "longitude": 77.0266
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.9",
+        "reviewCount": "520",
+        "bestRating": "5",
+        "worstRating": "1"
+      },
+      "review": [
+        {
+          "@type": "Review",
+          "author": {
+            "@type": "Person",
+            "name": "Navovia Next"
+          },
+          "datePublished": "2026-10-07",
+          "reviewBody": "दाल मखनी और शुद्ध देसी घी की रोटियां बिल्कुल माँ के हाथ जैसी हैं! भोजन हमेशा गर्म और सटीक समय पर डिलीवर होता है।",
+          "reviewRating": {
+            "@type": "Rating",
+            "ratingValue": "5",
+            "bestRating": "5"
+          }
+        },
+        {
+          "@type": "Review",
+          "author": {
+            "@type": "Person",
+            "name": "Rohit K. Sharma"
+          },
+          "datePublished": "2026-10-06",
+          "reviewBody": "Office lunch ke liye best tiffin service in Gurugram NCR! Low oil, perfectly packed, zero hassle.",
+          "reviewRating": {
+            "@type": "Rating",
+            "ratingValue": "5",
+            "bestRating": "5"
+          }
+        },
+        {
+          "@type": "Review",
+          "author": {
+            "@type": "Person",
+            "name": "Priya Verma"
+          },
+          "datePublished": "2026-10-05",
+          "reviewBody": "कैलेंडर से मील पॉज/स्किप करने की सुविधा बहुत अच्छी है। जिस दिन बाहर जाना हो, पैसे नहीं कटते। 100% पारदर्शी!",
+          "reviewRating": {
+            "@type": "Rating",
+            "ratingValue": "5",
+            "bestRating": "5"
+          }
+        }
+      ]
+    }
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      (function() {
+        function loadMaps(key) {
+          if (window.google && window.google.maps) return;
+          var s = document.createElement('script');
+          s.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(key) + '&libraries=places,geometry,marker&loading=async';
+          s.async = true;
+          s.defer = true;
+          document.head.appendChild(s);
+        }
+        fetch('/api/config/client-env')
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            var apiKey = (d && d.googleMapsApiKey) ? d.googleMapsApiKey : 'AIzaSyBNOOCxQ9wNDxWpPR36FoezaWpIEbRipR4';
+            loadMaps(apiKey);
+          })
+          .catch(function() {
+            loadMaps('AIzaSyBNOOCxQ9wNDxWpPR36FoezaWpIEbRipR4');
+          });
+      })();
+    </script>
+    <script>
+      (function() {
+        try {
+          var p = window.location.pathname.replace(/^\/|\/$/g, '').toLowerCase();
+          if (p === 'vendor' || p === 'vendor_portal') {
+            if (!window.location.search.includes('app=')) {
+              var u = new URL(window.location.href);
+              u.searchParams.set('app', 'vendor');
+              window.history.replaceState({}, '', u.toString());
+            }
+          } else if (p === 'owner' || p === 'admin') {
+            if (!window.location.search.includes('app=')) {
+              var u = new URL(window.location.href);
+              u.searchParams.set('app', 'owner');
+              window.history.replaceState({}, '', u.toString());
+            }
+          }
+        } catch (_) {}
+      })();
+    </script>
+    <script src="/assets/device-vault.js?v=20261009_v3"></script>
+    <script type="module" crossorigin src="/assets/vendor_client.js?v=20261028_v1"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index.css?v=20261008_v14">
+    <div id="google_translate_element" style="display:none"></div>
+    <script type="text/javascript">
+      function googleTranslateElementInit() {
+        new google.translate.TranslateElement({
+          pageLanguage: 'hi',
+          includedLanguages: 'hi,mr,gu,pa,bn,ta,te,kn,ml,en',
+          autoDisplay: false
+        }, 'google_translate_element');
+      }
+    </script>
+    <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+    <script src="/assets/language-manager.js?v=20261008_v2"></script>
+    <script src="/assets/reviews-manager.js?v=20261008_v1"></script>
+  </head>
+  <body>
+    <div id="root">
+      <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; color: #1e293b; padding: 20px; text-align: center;">
+        <div style="width: 60px; height: 60px; border-radius: 18px; background: #2e7d32; display: flex; align-items: center; justify-content: center; font-size: 30px; box-shadow: 0 10px 25px -5px rgba(46,125,50,0.35); margin-bottom: 16px;">
+          🍱
+        </div>
+        <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 6px 0; color: #0f172a; letter-spacing: -0.025em;">NOV TIFFIN</h2>
+        <p style="font-size: 13px; color: #166534; margin: 0 0 20px 0; font-weight: 700;">वेंडर पार्टनर पोर्टल लोड हो रहा है...</p>
+        <div style="width: 32px; height: 32px; border: 3px solid #e2e8f0; border-top-color: #2e7d32; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+        <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+      </div>
+    </div>
+  </body>
+</html>
+
