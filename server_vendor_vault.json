@@ -47,5 +47,11 @@
     "payoutDay": "Monday"
   },
   "refundDeductions": [],
-  "pendingDishes": []
+  "pendingDishes": [],
+  "sheetConfig": {
+    "spreadsheetId": "142d571c",
+    "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/142d571c",
+    "scriptWebhookUrl": "https://script.google.com/macros/s/AKfycbx58mBFYRV8f9gVgaevvepyi7wQ6EoHtV3JtWg-gm-rJKiIb_QrB6aaK2duMQgyrtCq/exec",
+    "lastSynced": "2026-10-29T12:05:00.000Z"
+  }
 }
