@@ -21,7 +21,7 @@ export interface VendorUser {
   };
 }
 
-export function VendorPortalApp({ activeVendorUser, onLogout }: { activeVendorUser?: any; onLogout?: () => void }) {
+export function VendorPortalApp({ activeVendorUser, onLogout, onSwitchToOwner }: { activeVendorUser?: any; onLogout?: () => void; onSwitchToOwner?: () => void }) {
   // Check if authenticated as vendor (or specifically NIR8800)
   const [vendorSession, setVendorSession] = useState<any>(() => {
     try {
@@ -53,7 +53,7 @@ export function VendorPortalApp({ activeVendorUser, onLogout }: { activeVendorUs
   const [dishSearchQuery, setDishSearchQuery] = useState('');
   const [orders, setOrders] = useState<any[]>([]);
   const [rateCard, setRateCard] = useState<VendorRateItem[]>(VENDOR_MASTER_RATE_CARD);
-  const [rateCardSource, setRateCardSource] = useState<string>('Master');
+  const [rateCardSource, setRateCardSource] = useState<string>('Owner Master Catalog');
   const [wallet, setWallet] = useState<any>({
     currentBalance: 0,
     minimumReserve: 2000,
@@ -69,8 +69,7 @@ export function VendorPortalApp({ activeVendorUser, onLogout }: { activeVendorUs
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Google Sheets & deductions state (managed privately by owner)
-  const [sheetStatus, setSheetStatus] = useState<{ spreadsheetId?: string; spreadsheetUrl?: string; lastSynced?: string } | null>(null);
+  // Deductions state (managed privately by owner)
   const [refundDeductions, setRefundDeductions] = useState<any[]>([]);
 
   // 3P Punching Form State (with Search, Category Filter & Multi-Item Basket)
@@ -101,63 +100,99 @@ export function VendorPortalApp({ activeVendorUser, onLogout }: { activeVendorUs
   const [rateCategoryFilter, setRateCategoryFilter] = useState<string>('all');
   const [rateSearchQuery, setRateSearchQuery] = useState<string>('');
 
+  // Payout Request Modal State
+  const [showPayoutRequestModal, setShowPayoutRequestModal] = useState(false);
+  const [reqPayoutAmount, setReqPayoutAmount] = useState<number>(0);
+  const [reqPayoutUpi, setReqPayoutUpi] = useState('9118409672@upi');
+  const [reqPayoutNotes, setReqPayoutNotes] = useState('');
+
+  const handlePayoutRequestSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reqPayoutAmount || reqPayoutAmount <= 0) {
+      showToast('कृपया मान्य पेआउट राशि दर्ज करें', true);
+      return;
+    }
+    try {
+      const res = await fetch('/api/vendor/payout/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: reqPayoutAmount,
+          upiId: reqPayoutUpi,
+          notes: reqPayoutNotes
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(data.message || 'पेआउट अनुरोध ओनर को भेज दिया गया है!');
+        setShowPayoutRequestModal(false);
+        setReqPayoutNotes('');
+        refreshData();
+      } else {
+        showToast(data.message || 'पेआउट अनुरोध में त्रुटि', true);
+      }
+    } catch {
+      showToast('सर्वर से संपर्क नहीं हो पाया', true);
+    }
+  };
+
   // Orders filters
   const [orderSourceFilter, setOrderSourceFilter] = useState<string>('all');
 
   const vendorId = vendorSession?.id || activeVendorUser?.id || 'NIR8800';
   const vendorName = vendorSession?.companyName || vendorSession?.name || activeVendorUser?.companyName || activeVendorUser?.name || 'NIR Cloud Kitchen Partner';
 
+  // Safe JSON Fetch helper
+  const safeJsonFetch = async (url: string, options?: RequestInit) => {
+    try {
+      const res = await fetch(url, options);
+      const ct = res.headers.get('content-type') || '';
+      if (res.ok && ct.includes('json')) {
+        return await res.json();
+      }
+      const text = await res.text();
+      if (text && (text.startsWith('{') || text.startsWith('['))) {
+        return JSON.parse(text);
+      }
+    } catch (e) {
+      console.warn(`[VendorSafeFetch] Warning for ${url}:`, e);
+    }
+    return null;
+  };
+
   // Load backend data
   const refreshData = async () => {
     try {
       setLoading(true);
-      // Fetch sheets status
-      try {
-        const sheetRes = await fetch('/api/vendor/sheets/status');
-        if (sheetRes.ok) {
-          const sd = await sheetRes.json();
-          if (sd.sheetConfig) setSheetStatus(sd.sheetConfig);
-        }
-      } catch {}
 
-      // Fetch dynamic Rate Card (synced from Google Sheet / CSV)
-      try {
-        const rcRes = await fetch('/api/vendor/rate-card');
-        if (rcRes.ok) {
-          const rcd = await rcRes.json();
-          if (rcd.rateCard && Array.isArray(rcd.rateCard) && rcd.rateCard.length > 0) {
-            setRateCard(rcd.rateCard);
-          }
-          if (rcd.syncedSource) {
-            setRateCardSource(rcd.syncedSource);
-          }
+      // Fetch dynamic Rate Card
+      const rcd = await safeJsonFetch('/api/vendor/rate-card');
+      if (rcd) {
+        if (rcd.rateCard && Array.isArray(rcd.rateCard) && rcd.rateCard.length > 0) {
+          setRateCard(rcd.rateCard);
         }
-      } catch {}
-
-      // Fetch orders
-      const ordRes = await fetch('/api/vendor/orders');
-      if (ordRes.ok) {
-        const d = await ordRes.json();
-        if (d.orders) setOrders(d.orders);
+        if (rcd.syncedSource) {
+          setRateCardSource(rcd.syncedSource);
+        }
       }
 
+      // Fetch orders
+      const ordData = await safeJsonFetch('/api/vendor/orders');
+      if (ordData?.orders) setOrders(ordData.orders);
+
       // Fetch wallet & refund deductions
-      const walRes = await fetch('/api/vendor/wallet');
-      if (walRes.ok) {
-        const d = await walRes.json();
-        if (d.wallet) setWallet(d.wallet);
-        if (d.transactions) setTransactions(d.transactions);
-        if (d.refundDeductions) setRefundDeductions(d.refundDeductions);
+      const walData = await safeJsonFetch('/api/vendor/wallet');
+      if (walData) {
+        if (walData.wallet) setWallet(walData.wallet);
+        if (walData.transactions) setTransactions(walData.transactions);
+        if (walData.refundDeductions) setRefundDeductions(walData.refundDeductions);
       }
 
       // Fetch inventory
-      const invRes = await fetch('/api/vendor/inventory');
-      if (invRes.ok) {
-        const d = await invRes.json();
-        if (d.inventory) setInventory(d.inventory);
-      }
+      const invData = await safeJsonFetch('/api/vendor/inventory');
+      if (invData?.inventory) setInventory(invData.inventory);
     } catch (err) {
-      console.error('Failed to load vendor data:', err);
+      console.warn('Vendor refresh warning:', err);
     } finally {
       setLoading(false);
     }
@@ -513,7 +548,7 @@ export function VendorPortalApp({ activeVendorUser, onLogout }: { activeVendorUs
 
           <div className="pt-2 border-t border-slate-100 text-center">
             <p className="text-[11px] text-slate-400">
-              सुरक्षित SSL एन्क्रिप्शन • डेटा TiffinMate कोर इंजन से रीयल-टाइम सिंक
+              सुरक्षित SSL एन्क्रिप्शन • डेटा आंतरिक TiffinMate इंजन से सिंक
             </p>
           </div>
         </div>
@@ -551,6 +586,7 @@ export function VendorPortalApp({ activeVendorUser, onLogout }: { activeVendorUs
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-800/80 border border-slate-700 text-xs">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
               <span className="font-bold text-slate-200">Kitchen Active</span>
@@ -1171,12 +1207,25 @@ export function VendorPortalApp({ activeVendorUser, onLogout }: { activeVendorUs
                   <span className="text-[10px] text-slate-400 block mt-0.5">DNS / डिस्प्यूट क्लीयरेंस पर देय</span>
                 </div>
 
-                <div className="bg-emerald-500/20 border border-emerald-400/40 p-4 rounded-2xl">
-                  <span className="text-[11px] text-emerald-300 block font-bold">आगामी सोमवार को देय पेआउट</span>
-                  <span className="text-2xl font-black text-emerald-400 mt-1 block">
-                    ₹{(wallet.eligibleMondayPayout ?? 0).toLocaleString()}
-                  </span>
-                  <span className="text-[10px] text-emerald-200 block mt-0.5">ओनर साइड से अप्रूवल देय</span>
+                <div className="bg-emerald-500/20 border border-emerald-400/40 p-4 rounded-2xl flex flex-col justify-between">
+                  <div>
+                    <span className="text-[11px] text-emerald-300 block font-bold">आगामी सोमवार को देय पेआउट</span>
+                    <span className="text-2xl font-black text-emerald-400 mt-1 block">
+                      ₹{(wallet.eligibleMondayPayout ?? 0).toLocaleString()}
+                    </span>
+                    <span className="text-[10px] text-emerald-200 block mt-0.5">ओनर अप्रूवल हेतु देय</span>
+                  </div>
+                  {wallet.eligibleMondayPayout > 0 && (
+                    <button
+                      onClick={() => {
+                        setReqPayoutAmount(wallet.eligibleMondayPayout);
+                        setShowPayoutRequestModal(true);
+                      }}
+                      className="mt-2 w-full py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs shadow-md transition cursor-pointer"
+                    >
+                      💸 पेआउट रिक्वेस्ट भेजें (No Limit)
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1877,6 +1926,87 @@ export function VendorPortalApp({ activeVendorUser, onLogout }: { activeVendorUs
                     {draftBasket.length > 0 ? `${draftBasket.length} मील` : '1 मील'}
                   </span>
                   <span>🍳</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          MODAL 2: VENDOR SUBMIT PAYOUT REQUEST (NO UPPER LIMIT)
+          ========================================================================= */}
+      {showPayoutRequestModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                <span>💸</span>
+                <span>पेआउट ट्रांसफर की रिक्वेस्ट भेजें</span>
+              </h3>
+              <button
+                onClick={() => setShowPayoutRequestModal(false)}
+                className="text-slate-400 hover:text-slate-600 text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handlePayoutRequestSubmit} className="space-y-4 text-xs font-bold text-slate-700">
+              <div>
+                <label className="block mb-1">अनुरोधित राशि (Requested Amount ₹)</label>
+                <input
+                  type="number"
+                  value={reqPayoutAmount}
+                  onChange={(e) => setReqPayoutAmount(Number(e.target.value))}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-900 text-xl font-black"
+                  required
+                />
+                <span className="text-[10px] text-slate-400 block mt-1">
+                  अधिकतम देय पेआउट राशि: <strong className="text-emerald-700">₹{wallet.eligibleMondayPayout}</strong> (कोई ऊपरी सीमा नहीं / No Upper Limit)
+                </span>
+              </div>
+
+              <div>
+                <label className="block mb-1">आपका UPI ID / बैंक खाता (Payment UPI ID)</label>
+                <input
+                  type="text"
+                  value={reqPayoutUpi}
+                  onChange={(e) => setReqPayoutUpi(e.target.value)}
+                  placeholder="e.g. 9118409672@upi / Google Pay"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-mono tracking-wider text-slate-900"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block mb-1">अतिरिक्त विवरण / नोट्स (Optional Notes)</label>
+                <input
+                  type="text"
+                  value={reqPayoutNotes}
+                  onChange={(e) => setReqPayoutNotes(e.target.value)}
+                  placeholder="e.g. साप्ताहिक पेआउट ट्रांसफर रिक्वेस्ट"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-medium text-slate-900"
+                />
+              </div>
+
+              <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 text-[11px] text-amber-900 font-medium">
+                ⚡ <strong>नो-लिमिट नियम:</strong> ₹2,000 रिज़र्व के ऊपर का पूरा बैलेंस ट्रांसफ़र करने पर कोई सीमा नहीं है। रिक्वेस्ट सबमिट होते ही मालिक द्वारा 1-क्लिक में अप्रूव होकर आपके खाते में आ जाएगी।
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPayoutRequestModal(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl cursor-pointer"
+                >
+                  रद्द करें
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl shadow-md cursor-pointer transition-all"
+                >
+                  पेआउट रिक्वेस्ट सबमिट करें 🚀
                 </button>
               </div>
             </form>

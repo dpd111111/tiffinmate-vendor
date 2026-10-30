@@ -20,7 +20,7 @@ import {
   setLogLevel
 } from 'firebase/firestore';
 
-setLogLevel('error');
+setLogLevel('silent');
 
 import { registerVendorRoutes } from './server/routes/vendor_cloud_routes.js';
 
@@ -370,8 +370,10 @@ try {
   console.warn('[Firebase Server Config Load Note]:', e);
 }
 
+let isFirestoreDisabled = false;
 let serverFirestoreDb: Firestore | null = null;
 function getServerFirestore(): Firestore | null {
+  if (isFirestoreDisabled) return null;
   if (serverFirestoreDb) return serverFirestoreDb;
   if (!firebaseConfig) return null;
   
@@ -648,6 +650,11 @@ async function syncCoreCollectionsFromFirestore(): Promise<void> {
       }
     }
   } catch (err: any) {
+    if (err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('permission-denied') || err?.message?.includes('disabled')) {
+      isFirestoreDisabled = true;
+      console.log('[Firestore Auto-Fallback]: Firestore API disabled/unreachable. Switched to local JSON vault persistence.');
+      return;
+    }
     console.warn('[Firestore Sync Subscriptions Warning]:', err?.message);
   }
 

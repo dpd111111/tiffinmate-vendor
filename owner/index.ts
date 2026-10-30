@@ -2,18 +2,8 @@
  * =========================================================================
  * OWNER MODULE INDEX
  * =========================================================================
- * Thematic owner master console exports:
- * - Overview Operations Dashboard
- * - Financial Ledger & Cash/Online Accounts
- * - Staff Salaries & Payroll Control Desk
- * - Tiffin Box Custody & Security Deposit
- * - Cloud Secret Vault & Credentials
- * - Google SEO Reviews Moderation
+ * Authoritative Owner Master Console Exports:
+ * - Vendor Partner & Master Rate Card Management Console
  */
 
-export * from './overview_dashboard';
-export * from './financial_ledger';
-export * from './staff_payroll';
-export * from './security_deposit';
-export * from './cloud_vault';
-export * from './google_seo_moderator';
+export * from '../management/owner/owner_vendor_panel';

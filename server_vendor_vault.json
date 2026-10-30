@@ -35,23 +35,97 @@
       "isMultiItem": false
     }
   ],
-  "transactions": [],
-  "inventory": [],
+  "transactions": [
+    {
+      "id": "txn_payout_1793357878492",
+      "date": "2026-10-30",
+      "type": "payout_disbursed",
+      "amount": 10,
+      "description": "Monday Settlement Paid via UPI (UTR: UPI/TEST991823912) - Weekly Test Settlement",
+      "referenceId": "UPI/TEST991823912",
+      "utrNumber": "UPI/TEST991823912",
+      "balanceAfter": 50,
+      "status": "settled",
+      "ownerApprovedBy": "Owner / Navovia Next HQ",
+      "cyclePeriod": "Weekly Settlement"
+    },
+    {
+      "id": "txn_ded_1793357878484",
+      "date": "2026-10-30",
+      "type": "refund_deduction",
+      "amount": 20,
+      "description": "Refund / Cancellation Deduction: Order ##ZOM-TEST-99 - Spillage / Delay Test Deduction",
+      "referenceId": "#ZOM-TEST-99",
+      "balanceAfter": 60,
+      "status": "settled",
+      "ownerApprovedBy": "Owner Operations Desk"
+    }
+  ],
+  "inventory": [
+    {
+      "id": "inv_atta",
+      "name": "Chakki Fresh Atta",
+      "hindiName": "चक्की फ्रेश आटा",
+      "category": "raw_materials",
+      "currentStock": 45,
+      "unit": "KG",
+      "minThreshold": 15,
+      "status": "sufficient",
+      "lastUpdated": "2026-10-30T00:00:00.000Z"
+    },
+    {
+      "id": "inv_rice",
+      "name": "Basmati Rice",
+      "hindiName": "बासमती चावल",
+      "category": "raw_materials",
+      "currentStock": 30,
+      "unit": "KG",
+      "minThreshold": 10,
+      "status": "sufficient",
+      "lastUpdated": "2026-10-30T00:00:00.000Z"
+    },
+    {
+      "id": "inv_ghee",
+      "name": "Pure Desi Cow Ghee",
+      "hindiName": "शुद्ध देसी गाय का घी",
+      "category": "dairy",
+      "currentStock": 12,
+      "unit": "Ltr",
+      "minThreshold": 5,
+      "status": "sufficient",
+      "lastUpdated": "2026-10-30T00:00:00.000Z"
+    },
+    {
+      "id": "inv_boxes",
+      "name": "3-Compartment Meal Trays",
+      "hindiName": "3-कंपार्टमेंट मील ट्रे बॉक्स",
+      "category": "packaging",
+      "currentStock": 250,
+      "unit": "Pcs",
+      "minThreshold": 50,
+      "status": "sufficient",
+      "lastUpdated": "2026-10-30T00:00:00.000Z"
+    }
+  ],
   "wallet": {
-    "totalLifetimeEarned": 0,
-    "currentBalance": 0,
+    "totalLifetimeEarned": 80,
+    "currentBalance": 50,
     "minimumReserve": 2000,
     "tenDayHoldAmount": 0,
-    "lastSettlementDate": "None",
+    "lastSettlementDate": "2026-10-30",
     "billingCycle": "Friday to Thursday",
     "payoutDay": "Monday"
   },
-  "refundDeductions": [],
-  "pendingDishes": [],
-  "sheetConfig": {
-    "spreadsheetId": "142d571c",
-    "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/142d571c",
-    "scriptWebhookUrl": "https://script.google.com/macros/s/AKfycbx58mBFYRV8f9gVgaevvepyi7wQ6EoHtV3JtWg-gm-rJKiIb_QrB6aaK2duMQgyrtCq/exec",
-    "lastSynced": "2026-10-29T12:05:00.000Z"
-  }
+  "refundDeductions": [
+    {
+      "id": "ded_1793357878484",
+      "orderId": "#ZOM-TEST-99",
+      "customerRefundAmount": 50,
+      "vendorCutDeducted": 20,
+      "reason": "Spillage / Delay Test Deduction",
+      "timestamp": "2026-10-30T10:57:58.484Z",
+      "status": "deducted"
+    }
+  ],
+  "pendingDishes": []
 }

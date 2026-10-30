@@ -56,6 +56,7 @@ export interface VendorPunchedOrder {
   notes?: string;
   dietaryType?: string;
   payoutCreditedToWallet: boolean;
+  verificationStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
   isMultiItem?: boolean;
 }
 
@@ -118,6 +119,15 @@ interface VendorVaultState {
   inventory: KitchenInventoryItem[];
   refundDeductions?: RefundDeductionRecord[];
   pendingDishes?: CustomDishSubmission[];
+  payoutRequests?: Array<{
+    id: string;
+    amount: number;
+    requestedAt: string;
+    status: 'PENDING' | 'DISBURSED' | 'REJECTED';
+    utrNumber?: string;
+    notes?: string;
+    upiId?: string;
+  }>;
   sheetConfig?: {
     spreadsheetId: string;
     spreadsheetUrl: string;
@@ -135,25 +145,8 @@ interface VendorVaultState {
   };
 }
 
-export async function pushEventToGoogleSheet(action: string, payload: Record<string, any>): Promise<void> {
-  try {
-    const vault = loadVendorVault();
-    const webhookUrl = vault.sheetConfig?.scriptWebhookUrl;
-    if (!webhookUrl) return;
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 4000);
-    await fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, ...payload }),
-      signal: controller.signal
-    });
-    clearTimeout(timer);
-    console.log(`[Google Sheet Auto-Push]: Dispatched "${action}" to Sheet Web App`);
-  } catch (err: any) {
-    console.warn(`[Google Sheet Auto-Push Info]: Sheet Webhook not yet deployed or unreachable (${err.message})`);
-  }
+export async function pushEventToGoogleSheet(_action: string, _payload: Record<string, any>): Promise<void> {
+  // Google Sheets completely removed as requested. All data managed internally via Owner Panel.
 }
 
 function loadVendorVault(): VendorVaultState {
@@ -163,6 +156,7 @@ function loadVendorVault(): VendorVaultState {
       const parsed = JSON.parse(raw);
       if (!parsed.refundDeductions) parsed.refundDeductions = [];
       if (!parsed.pendingDishes) parsed.pendingDishes = [];
+      if (!parsed.payoutRequests) parsed.payoutRequests = [];
       return parsed;
     }
   } catch (err) {
@@ -321,54 +315,123 @@ export function loadDynamicRateCard(): any[] {
   return VENDOR_MASTER_RATE_CARD;
 }
 
+export function saveRateCardToCSV(items: any[]): void {
+  try {
+    const headers = 'Item ID,Dish Name,Hindi Name,Category,Portion Size,Listing Price (₹),Vendor Payout Rate (₹),In Stock,Last Updated';
+    const lines = [headers];
+    for (const item of items) {
+      const portions = Array.isArray(item.portions) ? item.portions : [{ size: item.size || 'Standard', listingPrice: item.listingPrice || 99, vendorPayoutRate: item.vendorPayoutRate || 40 }];
+      for (const p of portions) {
+        const row = [
+          item.id || '',
+          item.name || '',
+          item.hindiName || item.name || '',
+          item.categoryLabel || item.category || 'विविध डिशेज़',
+          p.size || 'Standard',
+          p.listingPrice || 99,
+          p.vendorPayoutRate || 40,
+          item.inStock !== false ? 'YES' : 'NO',
+          new Date().toISOString().split('T')[0]
+        ];
+        lines.push(row.map(c => {
+          const str = String(c ?? '').replace(/"/g, '""');
+          return str.includes(',') || str.includes('\n') || str.includes('"') ? `"${str}"` : str;
+        }).join(','));
+      }
+    }
+    const syncedFilePath = path.join(process.cwd(), 'server_rate_card_synced.csv');
+    fs.writeFileSync(syncedFilePath, lines.join('\n'), 'utf-8');
+  } catch (e) {
+    console.error('[saveRateCardToCSV Error]:', e);
+  }
+}
+
+export function addRateCardItemToCSV(newItem: { id?: string; name: string; hindiName?: string; category?: string; categoryLabel?: string; portions: Array<{ size: string; listingPrice: number; vendorPayoutRate: number }>; inStock?: boolean }): string {
+  const currentCard = loadDynamicRateCard();
+  let baseId = (newItem.id || newItem.name.toLowerCase().replace(/[^a-z0-9]/g, '_')).replace(/_+/g, '_').replace(/^_|_$/g, '');
+  if (!baseId) baseId = `dish_${Date.now()}`;
+  let finalId = baseId;
+  let counter = 1;
+  while (currentCard.some(i => i.id === finalId)) {
+    finalId = `${baseId}_${counter++}`;
+  }
+
+  currentCard.push({
+    id: finalId,
+    name: newItem.name,
+    hindiName: newItem.hindiName || newItem.name,
+    category: newItem.category || 'breakfast_snacks',
+    categoryLabel: newItem.categoryLabel || 'नाश्ता व स्नैक्स',
+    portions: newItem.portions && newItem.portions.length > 0 ? newItem.portions : [{ size: 'Standard', listingPrice: 99, vendorPayoutRate: 40 }],
+    inStock: newItem.inStock !== false
+  });
+  saveRateCardToCSV(currentCard);
+  return finalId;
+}
+
+export function updateRateCardItemInCSV(itemId: string, updatedData: { name?: string; hindiName?: string; categoryLabel?: string; inStock?: boolean; portions?: Array<{ size: string; listingPrice: number; vendorPayoutRate: number }> }): boolean {
+  const currentCard = loadDynamicRateCard();
+  const index = currentCard.findIndex(i => i.id === itemId);
+  if (index >= 0) {
+    currentCard[index] = {
+      ...currentCard[index],
+      ...updatedData
+    };
+  } else {
+    currentCard.push({
+      id: itemId,
+      name: updatedData.name || itemId,
+      hindiName: updatedData.hindiName || updatedData.name || itemId,
+      category: 'breakfast_snacks',
+      categoryLabel: updatedData.categoryLabel || 'नाश्ता व स्नैक्स',
+      portions: updatedData.portions || [{ size: 'Standard', listingPrice: 99, vendorPayoutRate: 40 }],
+      inStock: updatedData.inStock !== false
+    });
+  }
+  saveRateCardToCSV(currentCard);
+  return true;
+}
+
+export function deleteRateCardItemFromCSV(itemId: string): boolean {
+  const currentCard = loadDynamicRateCard();
+  const filtered = currentCard.filter(i => i.id !== itemId);
+  saveRateCardToCSV(filtered);
+  return true;
+}
+
 /**
  * Register Vendor Routes on Express App
  */
 export function registerVendorRoutes(app: express.Express, authenticateStaffOrOwner: (req: express.Request) => any, getSubscriptions: () => any[]): void {
 
-  // 1. Get Master Rate Card (Live synced from CSV/Sheet + custom dishes)
+  // 1. Get Master Rate Card (Live loaded from CSV + approved custom dishes)
   app.get('/api/vendor/rate-card', async (_req, res) => {
     const vault = loadVendorVault();
-
-    // Auto-fetch from Google Sheet if connected!
-    if (vault.sheetConfig?.spreadsheetId) {
-      try {
-        const sheetCsvUrl = `https://docs.google.com/spreadsheets/d/${vault.sheetConfig.spreadsheetId}/gviz/tq?tqx=out:csv&sheet=RateCard`;
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
-        const csvRes = await fetch(sheetCsvUrl, { signal: controller.signal });
-        clearTimeout(timeoutId);
-        if (csvRes.ok) {
-          const csvText = await csvRes.text();
-          if (csvText && csvText.includes('Item ID')) {
-            fs.writeFileSync(path.join(process.cwd(), 'server_rate_card_synced.csv'), csvText, 'utf-8');
-            console.log('[Live Sheet RateCard]: Updated server_rate_card_synced.csv from Google Sheet');
-          }
-        }
-      } catch (err) {
-        // Fallback gracefully to local synced file
-      }
-    }
-
     const dynamicRateCard = loadDynamicRateCard();
     const approvedCustom = (vault.pendingDishes || []).filter(d => d.status === 'APPROVED');
     
-    // Merge master dynamic rate card with approved custom dishes
-    const fullRateCard = [...dynamicRateCard, ...approvedCustom.map(d => ({
-      id: d.id,
-      name: d.name,
-      hindiName: d.hindiName,
-      category: d.category,
-      categoryLabel: d.categoryLabel,
-      portions: d.portions,
-      inStock: true
-    }))];
+    // Merge master dynamic rate card with approved custom dishes if not already in dynamicRateCard
+    const existingIds = new Set(dynamicRateCard.map(i => i.id));
+    const fullRateCard = [...dynamicRateCard];
+    for (const d of approvedCustom) {
+      if (!existingIds.has(d.id)) {
+        fullRateCard.push({
+          id: d.id,
+          name: d.name,
+          hindiName: d.hindiName,
+          category: d.category as any,
+          categoryLabel: d.categoryLabel,
+          portions: d.portions as any,
+          inStock: true
+        });
+      }
+    }
 
     res.json({
       success: true,
       rateCard: fullRateCard,
       pendingDishes: (vault.pendingDishes || []).filter(d => d.status === 'PENDING'),
-      syncedSource: fs.existsSync(path.join(process.cwd(), 'server_rate_card_synced.csv')) ? 'Google Sheet / CSV File' : 'Master Rate Card',
+      syncedSource: 'Owner Managed Master Rate Card (Internal)',
       contractTerms: {
         vendorId: 'NIR8800',
         paymentCycle: 'Friday to Thursday',
@@ -475,8 +538,65 @@ export function registerVendorRoutes(app: express.Express, authenticateStaffOrOw
         }
       },
       transactions: vault.transactions.slice(0, 50),
-      refundDeductions: (vault.refundDeductions || []).slice(0, 30)
+      refundDeductions: (vault.refundDeductions || []).slice(0, 30),
+      payoutRequests: vault.payoutRequests || []
     });
+  });
+
+  // 3b. Vendor Submit Payout Request (No upper limit - any amount up to eligible balance > 2000)
+  app.post('/api/vendor/payout/request', (req, res) => {
+    try {
+      const { amount, upiId, notes } = req.body || {};
+      const numAmt = Number(amount);
+      const vault = loadVendorVault();
+      if (!vault.payoutRequests) vault.payoutRequests = [];
+
+      const balance = vault.wallet.currentBalance;
+      const reserve = vault.wallet.minimumReserve || 2000;
+      const eligibleAmount = Math.max(0, balance - reserve);
+
+      if (eligibleAmount <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: `पेआउट रिक्वेस्ट केवल तभी भेजी जा सकती है जब वॉलेट बैलेंस ₹2,000 रिज़र्व से अधिक हो। आपका वर्तमान बैलेंस: ₹${balance}`
+        });
+      }
+
+      if (!numAmt || numAmt <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'कृपया मान्य पेआउट राशि दर्ज करें।'
+        });
+      }
+
+      if (numAmt > eligibleAmount) {
+        return res.status(400).json({
+          success: false,
+          message: `अनुरोधित राशि (₹${numAmt}) आपकी अधिकतम देय राशि (₹${eligibleAmount}) से अधिक नहीं हो सकती।`
+        });
+      }
+
+      const newRequest = {
+        id: `payout_req_${Date.now()}`,
+        amount: numAmt,
+        requestedAt: new Date().toISOString(),
+        status: 'PENDING' as const,
+        upiId: String(upiId || '9118409672@upi').trim(),
+        notes: String(notes || '').trim()
+      };
+
+      vault.payoutRequests.unshift(newRequest);
+      saveVendorVault(vault);
+
+      res.json({
+        success: true,
+        payoutRequest: newRequest,
+        message: `₹${numAmt} की पेआउट रिक्वेस्ट सफलतापूर्वक ओनर पैनल में भेज दी गई है! मालिक द्वारा अप्रूव होते ही आपके UPI/बैंक में ट्रांसफर हो जाएगी।`
+      });
+    } catch (err: any) {
+      console.error('[Vendor Payout Request Error]:', err);
+      res.status(500).json({ success: false, message: 'पेआउट रिक्वेस्ट दर्ज करने में समस्या।' });
+    }
   });
 
   // 4. Record Customer Refund / Cancellation Deduction from Vendor Wallet
@@ -710,6 +830,7 @@ export function registerVendorRoutes(app: express.Express, authenticateStaffOrOw
         riderEta: '12 mins',
         notes: notes || '',
         payoutCreditedToWallet: false,
+        verificationStatus: 'PENDING',
         isMultiItem: orderItems.length > 1
       };
 
@@ -797,255 +918,22 @@ export function registerVendorRoutes(app: express.Express, authenticateStaffOrOw
     }
   });
 
-  // 8. Google Sheets Auto-Connect & Two-Way Sync
+  // 8. Google Sheets Integration Removed (Replaced by Owner Panel)
   app.get('/api/vendor/sheets/status', (_req, res) => {
-    const vault = loadVendorVault();
     res.json({
       success: true,
-      sheetConfig: vault.sheetConfig || null
+      sheetConfig: null,
+      managedViaOwnerPanel: true,
+      message: 'Google Sheets removed cleanly. All rate cards, orders, and settlements managed in Owner Panel.'
     });
   });
 
-  // Direct Sheet URL Connect (Bypasses iframe cross-origin & popup issues, 100% reliable)
-  app.post('/api/vendor/sheets/set-sheet-url', (req, res) => {
-    try {
-      const { sheetUrl } = req.body || {};
-      if (!sheetUrl) {
-        return res.status(400).json({ success: false, message: 'Google Sheet का URL या ID अनिवार्य है।' });
-      }
-
-      let spreadsheetId = String(sheetUrl).trim();
-      const match = spreadsheetId.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-      if (match && match[1]) {
-        spreadsheetId = match[1];
-      }
-
-      const fullUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
-      const vault = loadVendorVault();
-      vault.sheetConfig = {
-        spreadsheetId,
-        spreadsheetUrl: fullUrl,
-        lastSynced: new Date().toISOString()
-      };
-      saveVendorVault(vault);
-
-      console.log(`[Google Sheets]: Connected Sheet URL successfully: ${fullUrl}`);
-      return res.json({
-        success: true,
-        spreadsheetId,
-        spreadsheetUrl: fullUrl,
-        lastSynced: vault.sheetConfig.lastSynced,
-        message: 'Google Sheet सफलतापूर्वक कनेक्ट हो गई!'
-      });
-    } catch (err: any) {
-      console.error('[Set Sheet URL Error]:', err);
-      return res.status(500).json({ success: false, message: 'Sheet URL सेव करने में सर्वर समस्या।' });
-    }
-  });
-
-  app.post('/api/vendor/sheets/auto-connect', async (req, res) => {
-    try {
-      const { accessToken } = req.body || {};
-      if (!accessToken) {
-        return res.status(401).json({
-          success: false,
-          message: 'Google Workspace access token आवश्यक है।'
-        });
-      }
-
-      const vault = loadVendorVault();
-      let spreadsheetId = vault.sheetConfig?.spreadsheetId;
-      let spreadsheetUrl = vault.sheetConfig?.spreadsheetUrl;
-
-      // If spreadsheet does not exist yet, CREATE IT via Google Sheets API v4!
-      if (!spreadsheetId) {
-        console.log('[Google Sheets]: Creating new Master Vendor Spreadsheet...');
-        const createRes = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            properties: {
-              title: 'NOV TIFFIN - Master Vendor Ledger & Rate Card'
-            },
-            sheets: [
-              { properties: { title: 'RateCard', tabColor: { red: 0.18, green: 0.49, blue: 0.20 } } },
-              { properties: { title: 'DishApprovals', tabColor: { red: 0.95, green: 0.60, blue: 0.07 } } },
-              { properties: { title: 'LiveOrders', tabColor: { red: 0.13, green: 0.59, blue: 0.95 } } },
-              { properties: { title: 'RefundsDeductions', tabColor: { red: 0.90, green: 0.22, blue: 0.21 } } },
-              { properties: { title: 'MondayPayouts', tabColor: { red: 0.42, green: 0.19, blue: 0.64 } } }
-            ]
-          })
-        });
-
-        if (!createRes.ok) {
-          const errData = await createRes.json();
-          console.error('[Google Sheets Create Error]:', errData);
-          return res.status(createRes.status).json({
-            success: false,
-            message: `Google Sheet बनाने में त्रुटि: ${errData?.error?.message || 'Permission Error'}`
-          });
-        }
-
-        const createData = await createRes.json();
-        spreadsheetId = createData.spreadsheetId;
-        spreadsheetUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
-
-        // Populate initial headers & RateCard data
-        const rateCardRows = [
-          ['Item ID', 'Dish Name', 'Hindi Name', 'Category', 'Portion Size', 'Listing Price (₹)', 'Vendor Payout Rate (₹)', 'In Stock', 'Last Updated']
-        ];
-
-        VENDOR_MASTER_RATE_CARD.forEach(item => {
-          item.portions.forEach(p => {
-            rateCardRows.push([
-              item.id,
-              item.name,
-              item.hindiName,
-              item.categoryLabel,
-              p.size,
-              String(p.listingPrice),
-              String(p.vendorPayoutRate),
-              item.inStock ? 'YES' : 'NO',
-              new Date().toISOString().split('T')[0]
-            ]);
-          });
-        });
-
-        // Initialize all sheet headers
-        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchUpdate`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            valueInputOption: 'USER_ENTERED',
-            data: [
-              {
-                range: 'RateCard!A1:I',
-                values: rateCardRows
-              },
-              {
-                range: 'DishApprovals!A1:G1',
-                values: [['Dish ID', 'Dish Name', 'Hindi Name', 'Portion & Rates', 'Submitted At', 'Status (PENDING/APPROVED)', 'Owner Decision Notes']]
-              },
-              {
-                range: 'LiveOrders!A1:H1',
-                values: [['Order ID', 'Source / Platform', 'Dishes & Portions', 'Total Qty', 'Total Vendor Payout (₹)', 'Status', 'Timestamp', 'Notes']]
-              },
-              {
-                range: 'RefundsDeductions!A1:G1',
-                values: [['Deduction ID', 'Order ID', 'Customer Refund Amount (₹)', 'Vendor Cut Deducted (₹)', 'Reason', 'Timestamp', 'Status']]
-              },
-              {
-                range: 'MondayPayouts!A1:I1',
-                values: [['Settlement ID', 'Week Period', 'Total Orders Payout (₹)', 'Refund Deductions (₹)', 'Reserve Retained (₹)', 'Net Payable to Vendor (₹)', 'Vendor UPI / Account', 'Status', 'UTR Number']]
-              }
-            ]
-          })
-        });
-
-        vault.sheetConfig = {
-          spreadsheetId,
-          spreadsheetUrl,
-          lastSynced: new Date().toISOString()
-        };
-        saveVendorVault(vault);
-        console.log(`[Google Sheets]: Created new Master Sheet: ${spreadsheetUrl}`);
-      }
-
-      // Sync latest orders, deductions, and monday payout summary to the Google Sheet
-      const ordersRows = vault.orders.slice(0, 50).map(o => [
-        o.orderNumber,
-        o.source.toUpperCase(),
-        o.itemName,
-        String(o.quantity),
-        String(o.totalVendorPayout),
-        o.status.toUpperCase(),
-        o.createdAt,
-        o.notes || ''
-      ]);
-
-      const deductionsRows = (vault.refundDeductions || []).slice(0, 30).map(d => [
-        d.id,
-        d.orderId,
-        String(d.customerRefundAmount),
-        String(d.vendorCutDeducted),
-        d.reason,
-        d.timestamp,
-        d.status.toUpperCase()
-      ]);
-
-      // Calculate Monday Payout Snapshot
-      const grossEarned = vault.wallet.currentBalance;
-      const reserve = vault.wallet.minimumReserve || 2000;
-      const eligiblePay = Math.max(0, grossEarned - reserve);
-      const mondaySummaryRow = [
-        `STL-${Date.now().toString().slice(-6)}`,
-        'Friday to Thursday Settlement',
-        String(grossEarned),
-        String((vault.refundDeductions || []).reduce((acc, r) => acc + (r.vendorCutDeducted || 0), 0)),
-        String(reserve),
-        String(eligiblePay),
-        'UPI: 9118409672@upi / NIR8800 Bank Account',
-        eligiblePay > 0 ? 'READY_FOR_MONDAY_TRANSFER' : 'BELOW_RESERVE',
-        vault.transactions.find(t => t.type === 'payout_disbursed')?.utrNumber || 'PENDING_TRANSFER'
-      ];
-
-      await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchUpdate`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          valueInputOption: 'USER_ENTERED',
-          data: [
-            {
-              range: 'LiveOrders!A2:H',
-              values: ordersRows
-            },
-            {
-              range: 'RefundsDeductions!A2:G',
-              values: deductionsRows
-            },
-            {
-              range: 'MondayPayouts!A2:I2',
-              values: [mondaySummaryRow]
-            }
-          ]
-        })
-      });
-
-      vault.sheetConfig = {
-        spreadsheetId,
-        spreadsheetUrl,
-        lastSynced: new Date().toISOString()
-      };
-      saveVendorVault(vault);
-
-      res.json({
-        success: true,
-        spreadsheetId,
-        spreadsheetUrl,
-        lastSynced: vault.sheetConfig.lastSynced,
-        message: 'Google Sheet सफलतापूर्वक कनेक्ट व सिंक हो गई है!'
-      });
-    } catch (err: any) {
-      console.error('[Google Sheets Sync Error]:', err);
-      res.status(500).json({ success: false, message: 'Google Sheet सिंक करने में सर्वर समस्या।' });
-    }
-  });
-
-  // 9. Kitchen Inventory & Stock
+  // 9. Kitchen Inventory & Stock (Vendor & Owner)
   app.get('/api/vendor/inventory', (_req, res) => {
     const vault = loadVendorVault();
     res.json({
       success: true,
-      inventory: vault.inventory
+      inventory: vault.inventory || []
     });
   });
 
@@ -1053,7 +941,7 @@ export function registerVendorRoutes(app: express.Express, authenticateStaffOrOw
     try {
       const { itemId, changeAmount, newQuantity } = req.body || {};
       const vault = loadVendorVault();
-      const item = vault.inventory.find(i => i.id === itemId);
+      const item = (vault.inventory || []).find(i => i.id === itemId);
       
       if (!item) {
         return res.status(404).json({ success: false, message: 'इन्वेंटरी आइटम नहीं मिला।' });
@@ -1072,201 +960,428 @@ export function registerVendorRoutes(app: express.Express, authenticateStaffOrOw
 
       saveVendorVault(vault);
 
-        res.json({
-          success: true,
-          item,
-          message: `${item.name} का स्टॉक अपडेट हो गया (${item.currentStock} ${item.unit})`
-        });
-      } catch (err: any) {
-        res.status(500).json({ success: false, message: 'स्टॉक अपडेट करने में समस्या।' });
-      }
-    });
+      res.json({
+        success: true,
+        item,
+        message: `${item.name} का स्टॉक अपडेट हो गया (${item.currentStock} ${item.unit})`
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: 'स्टॉक अपडेट करने में समस्या।' });
+    }
+  });
 
-  // 10. Google Apps Script Dedicated Webhook (Zero Auth Barrier, 100% Reliable for Private Sheets)
-  app.post(['/api/vendor/sheets/webhook', '/api/sync/sheet-webhook'], (req, res) => {
+  app.post('/api/owner/vendor/inventory/add', (req, res) => {
     try {
-      const { rows, rateCard, spreadsheetId, scriptWebhookUrl, action, dishId, status } = req.body || {};
+      const { name, hindiName, category, currentStock, unit, minThreshold } = req.body || {};
+      if (!name) return res.status(400).json({ success: false, message: 'आइटम का नाम आवश्यक है।' });
+      
       const vault = loadVendorVault();
+      if (!vault.inventory) vault.inventory = [];
 
-      if (scriptWebhookUrl) {
-        if (!vault.sheetConfig) {
-          vault.sheetConfig = {
-            spreadsheetId: spreadsheetId || '',
-            spreadsheetUrl: spreadsheetId ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}` : '',
-            scriptWebhookUrl: String(scriptWebhookUrl).trim(),
-            lastSynced: new Date().toISOString()
-          };
-        } else {
-          vault.sheetConfig.scriptWebhookUrl = String(scriptWebhookUrl).trim();
-        }
-      }
+      const newItem: KitchenInventoryItem = {
+        id: `inv_${Date.now()}`,
+        name: String(name).trim(),
+        hindiName: String(hindiName || name).trim(),
+        category: (category || 'raw_materials') as any,
+        currentStock: Math.max(0, Number(currentStock || 0)),
+        unit: String(unit || 'KG').trim(),
+        minThreshold: Math.max(1, Number(minThreshold || 5)),
+        status: (Number(currentStock || 0) <= Number(minThreshold || 5)) ? 'low' : 'sufficient',
+        lastUpdated: new Date().toISOString()
+      };
 
-      if (spreadsheetId) {
-        if (!vault.sheetConfig) {
-          vault.sheetConfig = {
-            spreadsheetId: String(spreadsheetId).trim(),
-            spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${String(spreadsheetId).trim()}`,
-            lastSynced: new Date().toISOString()
-          };
-        } else {
-          vault.sheetConfig.spreadsheetId = String(spreadsheetId).trim();
-          vault.sheetConfig.spreadsheetUrl = `https://docs.google.com/spreadsheets/d/${String(spreadsheetId).trim()}`;
-          vault.sheetConfig.lastSynced = new Date().toISOString();
-        }
-      } else if (vault.sheetConfig) {
-        vault.sheetConfig.lastSynced = new Date().toISOString();
-      }
-
-      // Handle dish status update from Sheet (e.g. owner marks PENDING -> APPROVED)
-      if (action === 'update_dish_status' && dishId && status) {
-        const dish = (vault.pendingDishes || []).find(d => d.id === dishId);
-        if (dish) {
-          dish.status = status.toUpperCase();
-          if (dish.status === 'APPROVED') {
-            dish.approvedAt = new Date().toISOString();
-          }
-          saveVendorVault(vault);
-          console.log(`[Google Sheet Webhook]: Dish ${dishId} marked ${dish.status}`);
-          return res.json({ success: true, message: `Dish ${dishId} status set to ${dish.status}` });
-        }
-      }
-
-      let syncedCount = 0;
-
-      // Handle Rate Card Sync from Sheet
-      if (Array.isArray(rows) && rows.length > 0) {
-        // rows is 2D array from sheet.getDataRange().getValues()
-        const csvLines = rows.map((r: any[]) => {
-          return r.map((c: any) => {
-            const str = String(c ?? '').replace(/"/g, '""');
-            return str.includes(',') || str.includes('\n') || str.includes('"') ? `"${str}"` : str;
-          }).join(',');
-        });
-        const csvContent = csvLines.join('\n');
-        const syncedFilePath = path.join(process.cwd(), 'server_rate_card_synced.csv');
-        fs.writeFileSync(syncedFilePath, csvContent, 'utf-8');
-        syncedCount = Math.max(0, rows.length - 1);
-        console.log(`[Google Apps Script Webhook]: Synced ${syncedCount} rate card rows to server_rate_card_synced.csv`);
-      } else if (Array.isArray(rateCard) && rateCard.length > 0) {
-        const headers = 'Item ID,Dish Name,Hindi Name,Category,Portion Size,Listing Price (₹),Vendor Payout Rate (₹),In Stock,Last Updated';
-        const lines = [headers];
-        for (const item of rateCard) {
-          const portions = Array.isArray(item.portions) ? item.portions : [{ size: item.size || 'Standard', listingPrice: item.listingPrice || 99, vendorPayoutRate: item.vendorPayoutRate || 40 }];
-          for (const p of portions) {
-            lines.push(`${item.id || ''},${item.name || ''},${item.hindiName || ''},${item.categoryLabel || item.category || ''},${p.size || 'Standard'},${p.listingPrice || 99},${p.vendorPayoutRate || 40},${item.inStock !== false ? 'YES' : 'NO'},${new Date().toISOString().split('T')[0]}`);
-          }
-        }
-        const syncedFilePath = path.join(process.cwd(), 'server_rate_card_synced.csv');
-        fs.writeFileSync(syncedFilePath, lines.join('\n'), 'utf-8');
-        syncedCount = rateCard.length;
-      }
-
+      vault.inventory.push(newItem);
       saveVendorVault(vault);
 
-      // Prepare Live Orders and Monday Payout Data to return to the Script
-      const liveOrders = vault.orders.slice(0, 50).map(o => ([
-        o.orderNumber,
-        o.source.toUpperCase(),
-        o.itemName,
-        o.quantity,
-        o.totalVendorPayout,
-        o.status.toUpperCase(),
-        o.createdAt,
-        o.notes || ''
-      ]));
+      res.json({ success: true, item: newItem, message: `नया इन्वेंट्री आइटम "${newItem.name}" जोड़ा गया!` });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: 'इन्वेंटरी आइटम जोड़ने में समस्या।' });
+    }
+  });
 
-      const refundsDeductions = (vault.refundDeductions || []).slice(0, 30).map(d => ([
-        d.id,
-        d.orderId,
-        d.customerRefundAmount,
-        d.vendorCutDeducted,
-        d.reason,
-        d.timestamp,
-        d.status.toUpperCase()
-      ]));
-
+  // =========================================================================
+  // 10. OWNER PANEL: MASTER RATE CARD & VENDOR OPERATIONS MANAGEMENT
+  // Authoritative owner endpoints replacing Google Sheets
+  // =========================================================================
+  app.get('/api/owner/vendor/overview', (_req, res) => {
+    try {
+      const vault = loadVendorVault();
+      const dynamicRateCard = loadDynamicRateCard();
       const grossEarned = vault.wallet.currentBalance;
       const reserve = vault.wallet.minimumReserve || 2000;
       const eligiblePay = Math.max(0, grossEarned - reserve);
       const totalRefundDeductions = (vault.refundDeductions || []).reduce((acc, r) => acc + (r.vendorCutDeducted || 0), 0);
 
-      const mondayPayoutRow = [
-        `STL-${Date.now().toString().slice(-6)}`,
-        'Friday to Thursday Settlement',
-        grossEarned,
-        totalRefundDeductions,
-        reserve,
-        eligiblePay,
-        'UPI: 9118409672@upi / NIR8800 Bank Account',
-        eligiblePay > 0 ? 'READY_FOR_MONDAY_TRANSFER' : 'BELOW_RESERVE',
-        vault.transactions.find(t => t.type === 'payout_disbursed')?.utrNumber || 'PENDING_TRANSFER'
-      ];
-
       res.json({
         success: true,
-        message: `रेट कार्ड सफलतापूर्वक ऐप में सिंक हो गया! (${syncedCount} डिशेज़ अपडेट)`,
-        syncedCount,
-        lastSynced: new Date().toISOString(),
-        liveOrders,
-        refundsDeductions,
-        mondayPayoutRow,
-        eligiblePay
+        rateCard: dynamicRateCard,
+        pendingDishes: vault.pendingDishes || [],
+        orders: vault.orders || [],
+        wallet: {
+          ...vault.wallet,
+          eligibleMondayPayout: eligiblePay,
+          totalRefundDeductions
+        },
+        transactions: vault.transactions || [],
+        refundDeductions: vault.refundDeductions || [],
+        inventory: vault.inventory || [],
+        payoutRequests: vault.payoutRequests || []
       });
     } catch (err: any) {
-      console.error('[Google Apps Script Webhook Error]:', err);
-      res.status(500).json({ success: false, message: 'Apps Script डेटा प्रोसेस करने में सर्वर त्रुटि।' });
+      console.error('[Owner Vendor Overview Error]:', err);
+      res.status(500).json({ success: false, message: 'वेंडर डेटा लोड करने में त्रुटि।' });
     }
   });
 
-  // GET Webhook endpoint for script to pull latest app orders without pushing
-  app.get(['/api/vendor/sheets/webhook', '/api/sync/sheet-webhook'], (_req, res) => {
-    const vault = loadVendorVault();
-    const grossEarned = vault.wallet.currentBalance;
-    const reserve = vault.wallet.minimumReserve || 2000;
-    const eligiblePay = Math.max(0, grossEarned - reserve);
-    const totalRefundDeductions = (vault.refundDeductions || []).reduce((acc, r) => acc + (r.vendorCutDeducted || 0), 0);
+  app.post('/api/owner/vendor/rate-card/update', (req, res) => {
+    try {
+      const { itemId, name, hindiName, categoryLabel, portions, inStock } = req.body || {};
+      if (!itemId) return res.status(400).json({ success: false, message: 'Item ID आवश्यक है।' });
 
-    const liveOrders = vault.orders.slice(0, 50).map(o => ([
-      o.orderNumber,
-      o.source.toUpperCase(),
-      o.itemName,
-      o.quantity,
-      o.totalVendorPayout,
-      o.status.toUpperCase(),
-      o.createdAt,
-      o.notes || ''
-    ]));
+      updateRateCardItemInCSV(itemId, {
+        name,
+        hindiName,
+        categoryLabel,
+        inStock,
+        portions
+      });
 
-    const refundsDeductions = (vault.refundDeductions || []).slice(0, 30).map(d => ([
-      d.id,
-      d.orderId,
-      d.customerRefundAmount,
-      d.vendorCutDeducted,
-      d.reason,
-      d.timestamp,
-      d.status.toUpperCase()
-    ]));
+      res.json({
+        success: true,
+        message: `डिश "${name || itemId}" का रेट कार्ड सफलतापूर्वक अपडेट हो गया!`
+      });
+    } catch (err: any) {
+      console.error('[Rate Card Update Error]:', err);
+      res.status(500).json({ success: false, message: 'रेट कार्ड अपडेट करने में त्रुटि।' });
+    }
+  });
 
-    const mondayPayoutRow = [
-      `STL-${Date.now().toString().slice(-6)}`,
-      'Friday to Thursday Settlement',
-      grossEarned,
-      totalRefundDeductions,
-      reserve,
-      eligiblePay,
-      'UPI: 9118409672@upi / NIR8800 Bank Account',
-      eligiblePay > 0 ? 'READY_FOR_MONDAY_TRANSFER' : 'BELOW_RESERVE',
-      vault.transactions.find(t => t.type === 'payout_disbursed')?.utrNumber || 'PENDING_TRANSFER'
-    ];
+  app.post('/api/owner/vendor/rate-card/add', (req, res) => {
+    try {
+      const { name, hindiName, category, categoryLabel, portions, inStock } = req.body || {};
+      if (!name) return res.status(400).json({ success: false, message: 'डिश का नाम अनिवार्य है।' });
 
-    res.json({
-      success: true,
-      liveOrders,
-      refundsDeductions,
-      mondayPayoutRow,
-      eligiblePay,
-      grossEarned,
-      lastSynced: vault.sheetConfig?.lastSynced || new Date().toISOString()
-    });
+      const newId = addRateCardItemToCSV({
+        name,
+        hindiName,
+        category,
+        categoryLabel,
+        portions: Array.isArray(portions) && portions.length > 0 ? portions : [{ size: 'Standard', listingPrice: 99, vendorPayoutRate: 40 }],
+        inStock: inStock !== false
+      });
+
+      res.json({
+        success: true,
+        dishId: newId,
+        message: `नई डिश "${name}" मास्टर रेट कार्ड में सफलतापूर्वक जुड़ गई!`
+      });
+    } catch (err: any) {
+      console.error('[Rate Card Add Error]:', err);
+      res.status(500).json({ success: false, message: 'डिश जोड़ने में त्रुटि।' });
+    }
+  });
+
+  app.post('/api/owner/vendor/rate-card/toggle-stock', (req, res) => {
+    try {
+      const { itemId, inStock } = req.body || {};
+      if (!itemId) return res.status(400).json({ success: false, message: 'Item ID अनिवार्य है।' });
+
+      const updated = updateRateCardItemInCSV(itemId, { inStock: Boolean(inStock) });
+      res.json({
+        success: updated,
+        inStock: Boolean(inStock),
+        message: `डिश का स्टॉक स्टेटस ${inStock ? 'उपलब्ध (In Stock)' : 'समाप्त (Out of Stock)'} सेट हो गया।`
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: 'स्टॉक बदलने में त्रुटि।' });
+    }
+  });
+
+  app.post('/api/owner/vendor/rate-card/delete', (req, res) => {
+    try {
+      const { itemId } = req.body || {};
+      if (!itemId) return res.status(400).json({ success: false, message: 'Item ID अनिवार्य है।' });
+
+      deleteRateCardItemFromCSV(itemId);
+      res.json({ success: true, message: 'डिश मास्टर रेट कार्ड से हटा दी गई।' });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: 'डिश हटाने में त्रुटि।' });
+    }
+  });
+
+  app.post('/api/owner/vendor/dishes/review', (req, res) => {
+    try {
+      const { dishId, action, notes } = req.body || {};
+      if (!dishId || !action) {
+        return res.status(400).json({ success: false, message: 'Dish ID और Action (APPROVE / REJECT) अनिवार्य हैं।' });
+      }
+
+      const vault = loadVendorVault();
+      const dish = (vault.pendingDishes || []).find(d => d.id === dishId);
+      if (!dish) {
+        return res.status(404).json({ success: false, message: 'डिश आवेदन नहीं मिला।' });
+      }
+
+      if (action.toUpperCase() === 'APPROVE') {
+        dish.status = 'APPROVED';
+        dish.approvedAt = new Date().toISOString();
+        dish.notes = notes || 'मालिक द्वारा अनुमोदित (Approved by Owner)';
+
+        // Automatically append to master CSV rate card so it is immediately live for punching!
+        addRateCardItemToCSV({
+          id: dish.id,
+          name: dish.name,
+          hindiName: dish.hindiName,
+          category: dish.category,
+          categoryLabel: dish.categoryLabel,
+          portions: dish.portions,
+          inStock: true
+        });
+
+        saveVendorVault(vault);
+        return res.json({
+          success: true,
+          message: `डिश "${dish.name}" स्वीकृत हो गई और मास्टर रेट कार्ड में जुड़ गई!`,
+          dish
+        });
+      } else {
+        dish.status = 'REJECTED';
+        dish.notes = notes || 'मालिक द्वारा अस्वीकृत (Rejected)';
+        saveVendorVault(vault);
+        return res.json({
+          success: true,
+          message: `डिश "${dish.name}" अस्वीकृत कर दी गई।`,
+          dish
+        });
+      }
+    } catch (err: any) {
+      console.error('[Dish Review Error]:', err);
+      res.status(500).json({ success: false, message: 'डिश समीक्षा करने में समस्या।' });
+    }
+  });
+
+  app.post('/api/owner/vendor/payout/disburse', (req, res) => {
+    try {
+      const { amount, utrNumber, paymentMode, notes, requestId } = req.body || {};
+      const numAmount = Number(amount);
+      if (!numAmount || numAmount <= 0) {
+        return res.status(400).json({ success: false, message: 'मान्य पेआउट राशि दर्ज करें।' });
+      }
+      if (!utrNumber || String(utrNumber).trim().length < 3) {
+        return res.status(400).json({ success: false, message: 'बैंक/UPI का मान्य UTR / रेफरेंस नंबर अनिवार्य है।' });
+      }
+
+      const vault = loadVendorVault();
+      const currentBal = vault.wallet.currentBalance;
+
+      if (numAmount > currentBal) {
+        return res.status(400).json({
+          success: false,
+          message: `पेआउट राशि (₹${numAmount}) कुल वॉलेट बैलेंस (₹${currentBal}) से अधिक नहीं हो सकती।`
+        });
+      }
+
+      // Mark request as disbursed if requestId provided
+      if (requestId && vault.payoutRequests) {
+        const reqObj = vault.payoutRequests.find(r => r.id === requestId);
+        if (reqObj) {
+          reqObj.status = 'DISBURSED';
+          reqObj.utrNumber = String(utrNumber).trim();
+          reqObj.notes = String(notes || '').trim();
+        }
+      }
+
+      // Deduct from wallet
+      vault.wallet.currentBalance = Math.max(0, currentBal - numAmount);
+      vault.wallet.lastSettlementDate = new Date().toISOString().split('T')[0];
+
+      const txn: VendorWalletTransaction = {
+        id: `txn_payout_${Date.now()}`,
+        date: new Date().toISOString().split('T')[0],
+        type: 'payout_disbursed',
+        amount: numAmount,
+        description: `Payout Paid via ${paymentMode || 'UPI'} (UTR: ${utrNumber})${notes ? ` - ${notes}` : ''}`,
+        referenceId: String(utrNumber).trim(),
+        utrNumber: String(utrNumber).trim(),
+        balanceAfter: vault.wallet.currentBalance,
+        status: 'settled',
+        ownerApprovedBy: 'Owner / Navovia Next HQ',
+        cyclePeriod: 'Settlement'
+      };
+
+      vault.transactions.unshift(txn);
+      saveVendorVault(vault);
+
+      res.json({
+        success: true,
+        newBalance: vault.wallet.currentBalance,
+        transaction: txn,
+        message: `₹${numAmount} का पेआउट सफलतापूर्वक ट्रांसफर दर्ज हुआ! नया बैलेंस: ₹${vault.wallet.currentBalance}`
+      });
+    } catch (err: any) {
+      console.error('[Payout Disburse Error]:', err);
+      res.status(500).json({ success: false, message: 'पेआउट दर्ज करने में त्रुटि।' });
+    }
+  });
+
+  app.post('/api/owner/vendor/refunds/add', (req, res) => {
+    try {
+      const { orderId, customerRefundAmount, vendorCutDeducted, reason } = req.body || {};
+      const numDeduction = Number(vendorCutDeducted);
+      if (!numDeduction || numDeduction <= 0) {
+        return res.status(400).json({ success: false, message: 'मान्य कटौती राशि दर्ज करें।' });
+      }
+      if (!reason) {
+        return res.status(400).json({ success: false, message: 'कटौती का कारण आवश्यक है।' });
+      }
+
+      const vault = loadVendorVault();
+      if (!vault.refundDeductions) vault.refundDeductions = [];
+
+      // Deduct from wallet balance
+      vault.wallet.currentBalance = Math.max(0, vault.wallet.currentBalance - numDeduction);
+
+      const record: RefundDeductionRecord = {
+        id: `ded_${Date.now()}`,
+        orderId: String(orderId || 'GEN-DEDUCT').trim(),
+        customerRefundAmount: Number(customerRefundAmount || numDeduction),
+        vendorCutDeducted: numDeduction,
+        reason: String(reason).trim(),
+        timestamp: new Date().toISOString(),
+        status: 'deducted'
+      };
+
+      vault.refundDeductions.unshift(record);
+
+      const txn: VendorWalletTransaction = {
+        id: `txn_ded_${Date.now()}`,
+        date: new Date().toISOString().split('T')[0],
+        type: 'refund_deduction',
+        amount: numDeduction,
+        description: `Refund / Cancellation Deduction: Order #${record.orderId} - ${record.reason}`,
+        referenceId: record.orderId,
+        balanceAfter: vault.wallet.currentBalance,
+        status: 'settled',
+        ownerApprovedBy: 'Owner Operations Desk'
+      };
+
+      vault.transactions.unshift(txn);
+      saveVendorVault(vault);
+
+      res.json({
+        success: true,
+        record,
+        newBalance: vault.wallet.currentBalance,
+        message: `₹${numDeduction} की कटौती दर्ज की गई। नया वॉलेट बैलेंस: ₹${vault.wallet.currentBalance}`
+      });
+    } catch (err: any) {
+      console.error('[Refund Deduction Error]:', err);
+      res.status(500).json({ success: false, message: 'कटौती दर्ज करने में त्रुटि।' });
+    }
+  });
+
+  app.post('/api/owner/vendor/orders/update-status', (req, res) => {
+    try {
+      const { orderId, newStatus } = req.body || {};
+      if (!orderId || !newStatus) {
+        return res.status(400).json({ success: false, message: 'Order ID और Status अनिवार्य हैं।' });
+      }
+
+      const vault = loadVendorVault();
+      const order = (vault.orders || []).find(o => o.id === orderId);
+      if (!order) {
+        return res.status(404).json({ success: false, message: 'ऑर्डर नहीं मिला।' });
+      }
+
+      order.status = newStatus;
+      if (newStatus === 'delivered' && !order.payoutCreditedToWallet) {
+        order.payoutCreditedToWallet = true;
+        const payout = order.totalVendorPayout || 0;
+        vault.wallet.currentBalance += payout;
+        vault.wallet.totalLifetimeEarned += payout;
+
+        vault.transactions.unshift({
+          id: `txn_ord_${Date.now()}`,
+          date: new Date().toISOString().split('T')[0],
+          type: 'order_credit',
+          amount: payout,
+          description: `Order Settlement: ${order.itemName} (${order.orderNumber})`,
+          referenceId: order.orderNumber,
+          balanceAfter: vault.wallet.currentBalance,
+          status: 'settled',
+          cyclePeriod: 'Current Fri-Thu Cycle'
+        });
+      }
+
+      saveVendorVault(vault);
+      res.json({
+        success: true,
+        order,
+        walletBalance: vault.wallet.currentBalance,
+        message: `ऑर्डर स्टेटस "${newStatus}" अपडेट हो गया।`
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: 'स्टेटस अपडेट करने में समस्या।' });
+    }
+  });
+
+  app.post('/api/owner/vendor/orders/verify', (req, res) => {
+    try {
+      const { orderId, action, notes } = req.body || {};
+      if (!orderId || !action) {
+        return res.status(400).json({ success: false, message: 'Order ID और Action (APPROVE / REJECT) अनिवार्य हैं।' });
+      }
+
+      const vault = loadVendorVault();
+      const order = (vault.orders || []).find(o => o.id === orderId);
+      if (!order) {
+        return res.status(404).json({ success: false, message: 'ऑर्डर नहीं मिला।' });
+      }
+
+      if (action.toUpperCase() === 'APPROVE') {
+        order.verificationStatus = 'APPROVED';
+        
+        // Credit to wallet if not credited yet!
+        if (!order.payoutCreditedToWallet) {
+          order.payoutCreditedToWallet = true;
+          const payout = order.totalVendorPayout || 0;
+          vault.wallet.currentBalance += payout;
+          vault.wallet.totalLifetimeEarned += payout;
+
+          vault.transactions.unshift({
+            id: `txn_ord_${Date.now()}`,
+            date: new Date().toISOString().split('T')[0],
+            type: 'order_credit',
+            amount: payout,
+            description: `Verified Order Payout: ${order.itemName} (${order.orderNumber})`,
+            referenceId: order.orderNumber,
+            balanceAfter: vault.wallet.currentBalance,
+            status: 'settled',
+            ownerApprovedBy: 'Owner Operations Desk',
+            cyclePeriod: 'Current Fri-Thu Cycle'
+          });
+        }
+
+        saveVendorVault(vault);
+        return res.json({
+          success: true,
+          order,
+          newBalance: vault.wallet.currentBalance,
+          message: `ऑर्डर #${order.orderNumber} सत्यापित हुआ और ₹${order.totalVendorPayout} वेंडर वॉलेट में क्रेडिट हो गया!`
+        });
+      } else {
+        order.verificationStatus = 'REJECTED';
+        order.notes = (order.notes ? order.notes + ' | ' : '') + `मालिक द्वारा अस्वीकृत: ${notes || 'अमान्य आर्डर'}`;
+        saveVendorVault(vault);
+        return res.json({
+          success: true,
+          order,
+          message: `ऑर्डर #${order.orderNumber} अस्वीकृत किया गया (वॉलेट में क्रेडिट नहीं हुआ)।`
+        });
+      }
+    } catch (err: any) {
+      console.error('[Order Verify Error]:', err);
+      res.status(500).json({ success: false, message: 'ऑर्डर सत्यापन करने में समस्या।' });
+    }
   });
 }

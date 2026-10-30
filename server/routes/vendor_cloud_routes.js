@@ -780,24 +780,7 @@ var VENDOR_MASTER_RATE_CARD = [
 
 // server/routes/vendor_cloud_routes.ts
 var VENDOR_STORAGE_FILE = path.join(process.cwd(), "server_vendor_vault.json");
-async function pushEventToGoogleSheet(action, payload) {
-  try {
-    const vault = loadVendorVault();
-    const webhookUrl = vault.sheetConfig?.scriptWebhookUrl;
-    if (!webhookUrl) return;
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 4e3);
-    await fetch(webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, ...payload }),
-      signal: controller.signal
-    });
-    clearTimeout(timer);
-    console.log(`[Google Sheet Auto-Push]: Dispatched "${action}" to Sheet Web App`);
-  } catch (err) {
-    console.warn(`[Google Sheet Auto-Push Info]: Sheet Webhook not yet deployed or unreachable (${err.message})`);
-  }
+async function pushEventToGoogleSheet(_action, _payload) {
 }
 function loadVendorVault() {
   try {
@@ -952,42 +935,110 @@ function loadDynamicRateCard() {
   }
   return VENDOR_MASTER_RATE_CARD;
 }
+function saveRateCardToCSV(items) {
+  try {
+    const headers = "Item ID,Dish Name,Hindi Name,Category,Portion Size,Listing Price (\u20B9),Vendor Payout Rate (\u20B9),In Stock,Last Updated";
+    const lines = [headers];
+    for (const item of items) {
+      const portions = Array.isArray(item.portions) ? item.portions : [{ size: item.size || "Standard", listingPrice: item.listingPrice || 99, vendorPayoutRate: item.vendorPayoutRate || 40 }];
+      for (const p of portions) {
+        const row = [
+          item.id || "",
+          item.name || "",
+          item.hindiName || item.name || "",
+          item.categoryLabel || item.category || "\u0935\u093F\u0935\u093F\u0927 \u0921\u093F\u0936\u0947\u091C\u093C",
+          p.size || "Standard",
+          p.listingPrice || 99,
+          p.vendorPayoutRate || 40,
+          item.inStock !== false ? "YES" : "NO",
+          (/* @__PURE__ */ new Date()).toISOString().split("T")[0]
+        ];
+        lines.push(row.map((c) => {
+          const str = String(c ?? "").replace(/"/g, '""');
+          return str.includes(",") || str.includes("\n") || str.includes('"') ? `"${str}"` : str;
+        }).join(","));
+      }
+    }
+    const syncedFilePath = path.join(process.cwd(), "server_rate_card_synced.csv");
+    fs.writeFileSync(syncedFilePath, lines.join("\n"), "utf-8");
+  } catch (e) {
+    console.error("[saveRateCardToCSV Error]:", e);
+  }
+}
+function addRateCardItemToCSV(newItem) {
+  const currentCard = loadDynamicRateCard();
+  let baseId = (newItem.id || newItem.name.toLowerCase().replace(/[^a-z0-9]/g, "_")).replace(/_+/g, "_").replace(/^_|_$/g, "");
+  if (!baseId) baseId = `dish_${Date.now()}`;
+  let finalId = baseId;
+  let counter = 1;
+  while (currentCard.some((i) => i.id === finalId)) {
+    finalId = `${baseId}_${counter++}`;
+  }
+  currentCard.push({
+    id: finalId,
+    name: newItem.name,
+    hindiName: newItem.hindiName || newItem.name,
+    category: newItem.category || "breakfast_snacks",
+    categoryLabel: newItem.categoryLabel || "\u0928\u093E\u0936\u094D\u0924\u093E \u0935 \u0938\u094D\u0928\u0948\u0915\u094D\u0938",
+    portions: newItem.portions && newItem.portions.length > 0 ? newItem.portions : [{ size: "Standard", listingPrice: 99, vendorPayoutRate: 40 }],
+    inStock: newItem.inStock !== false
+  });
+  saveRateCardToCSV(currentCard);
+  return finalId;
+}
+function updateRateCardItemInCSV(itemId, updatedData) {
+  const currentCard = loadDynamicRateCard();
+  const index = currentCard.findIndex((i) => i.id === itemId);
+  if (index >= 0) {
+    currentCard[index] = {
+      ...currentCard[index],
+      ...updatedData
+    };
+  } else {
+    currentCard.push({
+      id: itemId,
+      name: updatedData.name || itemId,
+      hindiName: updatedData.hindiName || updatedData.name || itemId,
+      category: "breakfast_snacks",
+      categoryLabel: updatedData.categoryLabel || "\u0928\u093E\u0936\u094D\u0924\u093E \u0935 \u0938\u094D\u0928\u0948\u0915\u094D\u0938",
+      portions: updatedData.portions || [{ size: "Standard", listingPrice: 99, vendorPayoutRate: 40 }],
+      inStock: updatedData.inStock !== false
+    });
+  }
+  saveRateCardToCSV(currentCard);
+  return true;
+}
+function deleteRateCardItemFromCSV(itemId) {
+  const currentCard = loadDynamicRateCard();
+  const filtered = currentCard.filter((i) => i.id !== itemId);
+  saveRateCardToCSV(filtered);
+  return true;
+}
 function registerVendorRoutes(app, authenticateStaffOrOwner, getSubscriptions) {
   app.get("/api/vendor/rate-card", async (_req, res) => {
     const vault = loadVendorVault();
-    if (vault.sheetConfig?.spreadsheetId) {
-      try {
-        const sheetCsvUrl = `https://docs.google.com/spreadsheets/d/${vault.sheetConfig.spreadsheetId}/gviz/tq?tqx=out:csv&sheet=RateCard`;
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3e3);
-        const csvRes = await fetch(sheetCsvUrl, { signal: controller.signal });
-        clearTimeout(timeoutId);
-        if (csvRes.ok) {
-          const csvText = await csvRes.text();
-          if (csvText && csvText.includes("Item ID")) {
-            fs.writeFileSync(path.join(process.cwd(), "server_rate_card_synced.csv"), csvText, "utf-8");
-            console.log("[Live Sheet RateCard]: Updated server_rate_card_synced.csv from Google Sheet");
-          }
-        }
-      } catch (err) {
-      }
-    }
     const dynamicRateCard = loadDynamicRateCard();
     const approvedCustom = (vault.pendingDishes || []).filter((d) => d.status === "APPROVED");
-    const fullRateCard = [...dynamicRateCard, ...approvedCustom.map((d) => ({
-      id: d.id,
-      name: d.name,
-      hindiName: d.hindiName,
-      category: d.category,
-      categoryLabel: d.categoryLabel,
-      portions: d.portions,
-      inStock: true
-    }))];
+    const existingIds = new Set(dynamicRateCard.map((i) => i.id));
+    const fullRateCard = [...dynamicRateCard];
+    for (const d of approvedCustom) {
+      if (!existingIds.has(d.id)) {
+        fullRateCard.push({
+          id: d.id,
+          name: d.name,
+          hindiName: d.hindiName,
+          category: d.category,
+          categoryLabel: d.categoryLabel,
+          portions: d.portions,
+          inStock: true
+        });
+      }
+    }
     res.json({
       success: true,
       rateCard: fullRateCard,
       pendingDishes: (vault.pendingDishes || []).filter((d) => d.status === "PENDING"),
-      syncedSource: fs.existsSync(path.join(process.cwd(), "server_rate_card_synced.csv")) ? "Google Sheet / CSV File" : "Master Rate Card",
+      syncedSource: "Owner Managed Master Rate Card (Internal)",
       contractTerms: {
         vendorId: "NIR8800",
         paymentCycle: "Friday to Thursday",
@@ -1340,233 +1391,25 @@ function registerVendorRoutes(app, authenticateStaffOrOwner, getSubscriptions) {
     }
   });
   app.get("/api/vendor/sheets/status", (_req, res) => {
-    const vault = loadVendorVault();
     res.json({
       success: true,
-      sheetConfig: vault.sheetConfig || null
+      sheetConfig: null,
+      managedViaOwnerPanel: true,
+      message: "Google Sheets removed cleanly. All rate cards, orders, and settlements managed in Owner Panel."
     });
-  });
-  app.post("/api/vendor/sheets/set-sheet-url", (req, res) => {
-    try {
-      const { sheetUrl } = req.body || {};
-      if (!sheetUrl) {
-        return res.status(400).json({ success: false, message: "Google Sheet \u0915\u093E URL \u092F\u093E ID \u0905\u0928\u093F\u0935\u093E\u0930\u094D\u092F \u0939\u0948\u0964" });
-      }
-      let spreadsheetId = String(sheetUrl).trim();
-      const match = spreadsheetId.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-      if (match && match[1]) {
-        spreadsheetId = match[1];
-      }
-      const fullUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
-      const vault = loadVendorVault();
-      vault.sheetConfig = {
-        spreadsheetId,
-        spreadsheetUrl: fullUrl,
-        lastSynced: (/* @__PURE__ */ new Date()).toISOString()
-      };
-      saveVendorVault(vault);
-      console.log(`[Google Sheets]: Connected Sheet URL successfully: ${fullUrl}`);
-      return res.json({
-        success: true,
-        spreadsheetId,
-        spreadsheetUrl: fullUrl,
-        lastSynced: vault.sheetConfig.lastSynced,
-        message: "Google Sheet \u0938\u092B\u0932\u0924\u093E\u092A\u0942\u0930\u094D\u0935\u0915 \u0915\u0928\u0947\u0915\u094D\u091F \u0939\u094B \u0917\u0908!"
-      });
-    } catch (err) {
-      console.error("[Set Sheet URL Error]:", err);
-      return res.status(500).json({ success: false, message: "Sheet URL \u0938\u0947\u0935 \u0915\u0930\u0928\u0947 \u092E\u0947\u0902 \u0938\u0930\u094D\u0935\u0930 \u0938\u092E\u0938\u094D\u092F\u093E\u0964" });
-    }
-  });
-  app.post("/api/vendor/sheets/auto-connect", async (req, res) => {
-    try {
-      const { accessToken } = req.body || {};
-      if (!accessToken) {
-        return res.status(401).json({
-          success: false,
-          message: "Google Workspace access token \u0906\u0935\u0936\u094D\u092F\u0915 \u0939\u0948\u0964"
-        });
-      }
-      const vault = loadVendorVault();
-      let spreadsheetId = vault.sheetConfig?.spreadsheetId;
-      let spreadsheetUrl = vault.sheetConfig?.spreadsheetUrl;
-      if (!spreadsheetId) {
-        console.log("[Google Sheets]: Creating new Master Vendor Spreadsheet...");
-        const createRes = await fetch("https://sheets.googleapis.com/v4/spreadsheets", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${accessToken}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            properties: {
-              title: "NOV TIFFIN - Master Vendor Ledger & Rate Card"
-            },
-            sheets: [
-              { properties: { title: "RateCard", tabColor: { red: 0.18, green: 0.49, blue: 0.2 } } },
-              { properties: { title: "DishApprovals", tabColor: { red: 0.95, green: 0.6, blue: 0.07 } } },
-              { properties: { title: "LiveOrders", tabColor: { red: 0.13, green: 0.59, blue: 0.95 } } },
-              { properties: { title: "RefundsDeductions", tabColor: { red: 0.9, green: 0.22, blue: 0.21 } } },
-              { properties: { title: "MondayPayouts", tabColor: { red: 0.42, green: 0.19, blue: 0.64 } } }
-            ]
-          })
-        });
-        if (!createRes.ok) {
-          const errData = await createRes.json();
-          console.error("[Google Sheets Create Error]:", errData);
-          return res.status(createRes.status).json({
-            success: false,
-            message: `Google Sheet \u092C\u0928\u093E\u0928\u0947 \u092E\u0947\u0902 \u0924\u094D\u0930\u0941\u091F\u093F: ${errData?.error?.message || "Permission Error"}`
-          });
-        }
-        const createData = await createRes.json();
-        spreadsheetId = createData.spreadsheetId;
-        spreadsheetUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
-        const rateCardRows = [
-          ["Item ID", "Dish Name", "Hindi Name", "Category", "Portion Size", "Listing Price (\u20B9)", "Vendor Payout Rate (\u20B9)", "In Stock", "Last Updated"]
-        ];
-        VENDOR_MASTER_RATE_CARD.forEach((item) => {
-          item.portions.forEach((p) => {
-            rateCardRows.push([
-              item.id,
-              item.name,
-              item.hindiName,
-              item.categoryLabel,
-              p.size,
-              String(p.listingPrice),
-              String(p.vendorPayoutRate),
-              item.inStock ? "YES" : "NO",
-              (/* @__PURE__ */ new Date()).toISOString().split("T")[0]
-            ]);
-          });
-        });
-        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchUpdate`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${accessToken}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            valueInputOption: "USER_ENTERED",
-            data: [
-              {
-                range: "RateCard!A1:I",
-                values: rateCardRows
-              },
-              {
-                range: "DishApprovals!A1:G1",
-                values: [["Dish ID", "Dish Name", "Hindi Name", "Portion & Rates", "Submitted At", "Status (PENDING/APPROVED)", "Owner Decision Notes"]]
-              },
-              {
-                range: "LiveOrders!A1:H1",
-                values: [["Order ID", "Source / Platform", "Dishes & Portions", "Total Qty", "Total Vendor Payout (\u20B9)", "Status", "Timestamp", "Notes"]]
-              },
-              {
-                range: "RefundsDeductions!A1:G1",
-                values: [["Deduction ID", "Order ID", "Customer Refund Amount (\u20B9)", "Vendor Cut Deducted (\u20B9)", "Reason", "Timestamp", "Status"]]
-              },
-              {
-                range: "MondayPayouts!A1:I1",
-                values: [["Settlement ID", "Week Period", "Total Orders Payout (\u20B9)", "Refund Deductions (\u20B9)", "Reserve Retained (\u20B9)", "Net Payable to Vendor (\u20B9)", "Vendor UPI / Account", "Status", "UTR Number"]]
-              }
-            ]
-          })
-        });
-        vault.sheetConfig = {
-          spreadsheetId,
-          spreadsheetUrl,
-          lastSynced: (/* @__PURE__ */ new Date()).toISOString()
-        };
-        saveVendorVault(vault);
-        console.log(`[Google Sheets]: Created new Master Sheet: ${spreadsheetUrl}`);
-      }
-      const ordersRows = vault.orders.slice(0, 50).map((o) => [
-        o.orderNumber,
-        o.source.toUpperCase(),
-        o.itemName,
-        String(o.quantity),
-        String(o.totalVendorPayout),
-        o.status.toUpperCase(),
-        o.createdAt,
-        o.notes || ""
-      ]);
-      const deductionsRows = (vault.refundDeductions || []).slice(0, 30).map((d) => [
-        d.id,
-        d.orderId,
-        String(d.customerRefundAmount),
-        String(d.vendorCutDeducted),
-        d.reason,
-        d.timestamp,
-        d.status.toUpperCase()
-      ]);
-      const grossEarned = vault.wallet.currentBalance;
-      const reserve = vault.wallet.minimumReserve || 2e3;
-      const eligiblePay = Math.max(0, grossEarned - reserve);
-      const mondaySummaryRow = [
-        `STL-${Date.now().toString().slice(-6)}`,
-        "Friday to Thursday Settlement",
-        String(grossEarned),
-        String((vault.refundDeductions || []).reduce((acc, r) => acc + (r.vendorCutDeducted || 0), 0)),
-        String(reserve),
-        String(eligiblePay),
-        "UPI: 9118409672@upi / NIR8800 Bank Account",
-        eligiblePay > 0 ? "READY_FOR_MONDAY_TRANSFER" : "BELOW_RESERVE",
-        vault.transactions.find((t) => t.type === "payout_disbursed")?.utrNumber || "PENDING_TRANSFER"
-      ];
-      await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchUpdate`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          valueInputOption: "USER_ENTERED",
-          data: [
-            {
-              range: "LiveOrders!A2:H",
-              values: ordersRows
-            },
-            {
-              range: "RefundsDeductions!A2:G",
-              values: deductionsRows
-            },
-            {
-              range: "MondayPayouts!A2:I2",
-              values: [mondaySummaryRow]
-            }
-          ]
-        })
-      });
-      vault.sheetConfig = {
-        spreadsheetId,
-        spreadsheetUrl,
-        lastSynced: (/* @__PURE__ */ new Date()).toISOString()
-      };
-      saveVendorVault(vault);
-      res.json({
-        success: true,
-        spreadsheetId,
-        spreadsheetUrl,
-        lastSynced: vault.sheetConfig.lastSynced,
-        message: "Google Sheet \u0938\u092B\u0932\u0924\u093E\u092A\u0942\u0930\u094D\u0935\u0915 \u0915\u0928\u0947\u0915\u094D\u091F \u0935 \u0938\u093F\u0902\u0915 \u0939\u094B \u0917\u0908 \u0939\u0948!"
-      });
-    } catch (err) {
-      console.error("[Google Sheets Sync Error]:", err);
-      res.status(500).json({ success: false, message: "Google Sheet \u0938\u093F\u0902\u0915 \u0915\u0930\u0928\u0947 \u092E\u0947\u0902 \u0938\u0930\u094D\u0935\u0930 \u0938\u092E\u0938\u094D\u092F\u093E\u0964" });
-    }
   });
   app.get("/api/vendor/inventory", (_req, res) => {
     const vault = loadVendorVault();
     res.json({
       success: true,
-      inventory: vault.inventory
+      inventory: vault.inventory || []
     });
   });
   app.post("/api/vendor/inventory/update", (req, res) => {
     try {
       const { itemId, changeAmount, newQuantity } = req.body || {};
       const vault = loadVendorVault();
-      const item = vault.inventory.find((i) => i.id === itemId);
+      const item = (vault.inventory || []).find((i) => i.id === itemId);
       if (!item) {
         return res.status(404).json({ success: false, message: "\u0907\u0928\u094D\u0935\u0947\u0902\u091F\u0930\u0940 \u0906\u0907\u091F\u092E \u0928\u0939\u0940\u0902 \u092E\u093F\u0932\u093E\u0964" });
       }
@@ -1587,174 +1430,308 @@ function registerVendorRoutes(app, authenticateStaffOrOwner, getSubscriptions) {
       res.status(500).json({ success: false, message: "\u0938\u094D\u091F\u0949\u0915 \u0905\u092A\u0921\u0947\u091F \u0915\u0930\u0928\u0947 \u092E\u0947\u0902 \u0938\u092E\u0938\u094D\u092F\u093E\u0964" });
     }
   });
-  app.post(["/api/vendor/sheets/webhook", "/api/sync/sheet-webhook"], (req, res) => {
+  app.post("/api/owner/vendor/inventory/add", (req, res) => {
     try {
-      const { rows, rateCard, spreadsheetId, scriptWebhookUrl, action, dishId, status } = req.body || {};
+      const { name, hindiName, category, currentStock, unit, minThreshold } = req.body || {};
+      if (!name) return res.status(400).json({ success: false, message: "\u0906\u0907\u091F\u092E \u0915\u093E \u0928\u093E\u092E \u0906\u0935\u0936\u094D\u092F\u0915 \u0939\u0948\u0964" });
       const vault = loadVendorVault();
-      if (scriptWebhookUrl) {
-        if (!vault.sheetConfig) {
-          vault.sheetConfig = {
-            spreadsheetId: spreadsheetId || "",
-            spreadsheetUrl: spreadsheetId ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}` : "",
-            scriptWebhookUrl: String(scriptWebhookUrl).trim(),
-            lastSynced: (/* @__PURE__ */ new Date()).toISOString()
-          };
-        } else {
-          vault.sheetConfig.scriptWebhookUrl = String(scriptWebhookUrl).trim();
-        }
-      }
-      if (spreadsheetId) {
-        if (!vault.sheetConfig) {
-          vault.sheetConfig = {
-            spreadsheetId: String(spreadsheetId).trim(),
-            spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${String(spreadsheetId).trim()}`,
-            lastSynced: (/* @__PURE__ */ new Date()).toISOString()
-          };
-        } else {
-          vault.sheetConfig.spreadsheetId = String(spreadsheetId).trim();
-          vault.sheetConfig.spreadsheetUrl = `https://docs.google.com/spreadsheets/d/${String(spreadsheetId).trim()}`;
-          vault.sheetConfig.lastSynced = (/* @__PURE__ */ new Date()).toISOString();
-        }
-      } else if (vault.sheetConfig) {
-        vault.sheetConfig.lastSynced = (/* @__PURE__ */ new Date()).toISOString();
-      }
-      if (action === "update_dish_status" && dishId && status) {
-        const dish = (vault.pendingDishes || []).find((d) => d.id === dishId);
-        if (dish) {
-          dish.status = status.toUpperCase();
-          if (dish.status === "APPROVED") {
-            dish.approvedAt = (/* @__PURE__ */ new Date()).toISOString();
-          }
-          saveVendorVault(vault);
-          console.log(`[Google Sheet Webhook]: Dish ${dishId} marked ${dish.status}`);
-          return res.json({ success: true, message: `Dish ${dishId} status set to ${dish.status}` });
-        }
-      }
-      let syncedCount = 0;
-      if (Array.isArray(rows) && rows.length > 0) {
-        const csvLines = rows.map((r) => {
-          return r.map((c) => {
-            const str = String(c ?? "").replace(/"/g, '""');
-            return str.includes(",") || str.includes("\n") || str.includes('"') ? `"${str}"` : str;
-          }).join(",");
-        });
-        const csvContent = csvLines.join("\n");
-        const syncedFilePath = path.join(process.cwd(), "server_rate_card_synced.csv");
-        fs.writeFileSync(syncedFilePath, csvContent, "utf-8");
-        syncedCount = Math.max(0, rows.length - 1);
-        console.log(`[Google Apps Script Webhook]: Synced ${syncedCount} rate card rows to server_rate_card_synced.csv`);
-      } else if (Array.isArray(rateCard) && rateCard.length > 0) {
-        const headers = "Item ID,Dish Name,Hindi Name,Category,Portion Size,Listing Price (\u20B9),Vendor Payout Rate (\u20B9),In Stock,Last Updated";
-        const lines = [headers];
-        for (const item of rateCard) {
-          const portions = Array.isArray(item.portions) ? item.portions : [{ size: item.size || "Standard", listingPrice: item.listingPrice || 99, vendorPayoutRate: item.vendorPayoutRate || 40 }];
-          for (const p of portions) {
-            lines.push(`${item.id || ""},${item.name || ""},${item.hindiName || ""},${item.categoryLabel || item.category || ""},${p.size || "Standard"},${p.listingPrice || 99},${p.vendorPayoutRate || 40},${item.inStock !== false ? "YES" : "NO"},${(/* @__PURE__ */ new Date()).toISOString().split("T")[0]}`);
-          }
-        }
-        const syncedFilePath = path.join(process.cwd(), "server_rate_card_synced.csv");
-        fs.writeFileSync(syncedFilePath, lines.join("\n"), "utf-8");
-        syncedCount = rateCard.length;
-      }
+      if (!vault.inventory) vault.inventory = [];
+      const newItem = {
+        id: `inv_${Date.now()}`,
+        name: String(name).trim(),
+        hindiName: String(hindiName || name).trim(),
+        category: category || "raw_materials",
+        currentStock: Math.max(0, Number(currentStock || 0)),
+        unit: String(unit || "KG").trim(),
+        minThreshold: Math.max(1, Number(minThreshold || 5)),
+        status: Number(currentStock || 0) <= Number(minThreshold || 5) ? "low" : "sufficient",
+        lastUpdated: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      vault.inventory.push(newItem);
       saveVendorVault(vault);
-      const liveOrders = vault.orders.slice(0, 50).map((o) => [
-        o.orderNumber,
-        o.source.toUpperCase(),
-        o.itemName,
-        o.quantity,
-        o.totalVendorPayout,
-        o.status.toUpperCase(),
-        o.createdAt,
-        o.notes || ""
-      ]);
-      const refundsDeductions = (vault.refundDeductions || []).slice(0, 30).map((d) => [
-        d.id,
-        d.orderId,
-        d.customerRefundAmount,
-        d.vendorCutDeducted,
-        d.reason,
-        d.timestamp,
-        d.status.toUpperCase()
-      ]);
+      res.json({ success: true, item: newItem, message: `\u0928\u092F\u093E \u0907\u0928\u094D\u0935\u0947\u0902\u091F\u094D\u0930\u0940 \u0906\u0907\u091F\u092E "${newItem.name}" \u091C\u094B\u0921\u093C\u093E \u0917\u092F\u093E!` });
+    } catch (err) {
+      res.status(500).json({ success: false, message: "\u0907\u0928\u094D\u0935\u0947\u0902\u091F\u0930\u0940 \u0906\u0907\u091F\u092E \u091C\u094B\u0921\u093C\u0928\u0947 \u092E\u0947\u0902 \u0938\u092E\u0938\u094D\u092F\u093E\u0964" });
+    }
+  });
+  app.get("/api/owner/vendor/overview", (_req, res) => {
+    try {
+      const vault = loadVendorVault();
+      const dynamicRateCard = loadDynamicRateCard();
       const grossEarned = vault.wallet.currentBalance;
       const reserve = vault.wallet.minimumReserve || 2e3;
       const eligiblePay = Math.max(0, grossEarned - reserve);
       const totalRefundDeductions = (vault.refundDeductions || []).reduce((acc, r) => acc + (r.vendorCutDeducted || 0), 0);
-      const mondayPayoutRow = [
-        `STL-${Date.now().toString().slice(-6)}`,
-        "Friday to Thursday Settlement",
-        grossEarned,
-        totalRefundDeductions,
-        reserve,
-        eligiblePay,
-        "UPI: 9118409672@upi / NIR8800 Bank Account",
-        eligiblePay > 0 ? "READY_FOR_MONDAY_TRANSFER" : "BELOW_RESERVE",
-        vault.transactions.find((t) => t.type === "payout_disbursed")?.utrNumber || "PENDING_TRANSFER"
-      ];
       res.json({
         success: true,
-        message: `\u0930\u0947\u091F \u0915\u093E\u0930\u094D\u0921 \u0938\u092B\u0932\u0924\u093E\u092A\u0942\u0930\u094D\u0935\u0915 \u0910\u092A \u092E\u0947\u0902 \u0938\u093F\u0902\u0915 \u0939\u094B \u0917\u092F\u093E! (${syncedCount} \u0921\u093F\u0936\u0947\u091C\u093C \u0905\u092A\u0921\u0947\u091F)`,
-        syncedCount,
-        lastSynced: (/* @__PURE__ */ new Date()).toISOString(),
-        liveOrders,
-        refundsDeductions,
-        mondayPayoutRow,
-        eligiblePay
+        rateCard: dynamicRateCard,
+        pendingDishes: vault.pendingDishes || [],
+        orders: vault.orders || [],
+        wallet: {
+          ...vault.wallet,
+          eligibleMondayPayout: eligiblePay,
+          totalRefundDeductions
+        },
+        transactions: vault.transactions || [],
+        refundDeductions: vault.refundDeductions || [],
+        inventory: vault.inventory || []
       });
     } catch (err) {
-      console.error("[Google Apps Script Webhook Error]:", err);
-      res.status(500).json({ success: false, message: "Apps Script \u0921\u0947\u091F\u093E \u092A\u094D\u0930\u094B\u0938\u0947\u0938 \u0915\u0930\u0928\u0947 \u092E\u0947\u0902 \u0938\u0930\u094D\u0935\u0930 \u0924\u094D\u0930\u0941\u091F\u093F\u0964" });
+      console.error("[Owner Vendor Overview Error]:", err);
+      res.status(500).json({ success: false, message: "\u0935\u0947\u0902\u0921\u0930 \u0921\u0947\u091F\u093E \u0932\u094B\u0921 \u0915\u0930\u0928\u0947 \u092E\u0947\u0902 \u0924\u094D\u0930\u0941\u091F\u093F\u0964" });
     }
   });
-  app.get(["/api/vendor/sheets/webhook", "/api/sync/sheet-webhook"], (_req, res) => {
-    const vault = loadVendorVault();
-    const grossEarned = vault.wallet.currentBalance;
-    const reserve = vault.wallet.minimumReserve || 2e3;
-    const eligiblePay = Math.max(0, grossEarned - reserve);
-    const totalRefundDeductions = (vault.refundDeductions || []).reduce((acc, r) => acc + (r.vendorCutDeducted || 0), 0);
-    const liveOrders = vault.orders.slice(0, 50).map((o) => [
-      o.orderNumber,
-      o.source.toUpperCase(),
-      o.itemName,
-      o.quantity,
-      o.totalVendorPayout,
-      o.status.toUpperCase(),
-      o.createdAt,
-      o.notes || ""
-    ]);
-    const refundsDeductions = (vault.refundDeductions || []).slice(0, 30).map((d) => [
-      d.id,
-      d.orderId,
-      d.customerRefundAmount,
-      d.vendorCutDeducted,
-      d.reason,
-      d.timestamp,
-      d.status.toUpperCase()
-    ]);
-    const mondayPayoutRow = [
-      `STL-${Date.now().toString().slice(-6)}`,
-      "Friday to Thursday Settlement",
-      grossEarned,
-      totalRefundDeductions,
-      reserve,
-      eligiblePay,
-      "UPI: 9118409672@upi / NIR8800 Bank Account",
-      eligiblePay > 0 ? "READY_FOR_MONDAY_TRANSFER" : "BELOW_RESERVE",
-      vault.transactions.find((t) => t.type === "payout_disbursed")?.utrNumber || "PENDING_TRANSFER"
-    ];
-    res.json({
-      success: true,
-      liveOrders,
-      refundsDeductions,
-      mondayPayoutRow,
-      eligiblePay,
-      grossEarned,
-      lastSynced: vault.sheetConfig?.lastSynced || (/* @__PURE__ */ new Date()).toISOString()
-    });
+  app.post("/api/owner/vendor/rate-card/update", (req, res) => {
+    try {
+      const { itemId, name, hindiName, categoryLabel, portions, inStock } = req.body || {};
+      if (!itemId) return res.status(400).json({ success: false, message: "Item ID \u0906\u0935\u0936\u094D\u092F\u0915 \u0939\u0948\u0964" });
+      updateRateCardItemInCSV(itemId, {
+        name,
+        hindiName,
+        categoryLabel,
+        inStock,
+        portions
+      });
+      res.json({
+        success: true,
+        message: `\u0921\u093F\u0936 "${name || itemId}" \u0915\u093E \u0930\u0947\u091F \u0915\u093E\u0930\u094D\u0921 \u0938\u092B\u0932\u0924\u093E\u092A\u0942\u0930\u094D\u0935\u0915 \u0905\u092A\u0921\u0947\u091F \u0939\u094B \u0917\u092F\u093E!`
+      });
+    } catch (err) {
+      console.error("[Rate Card Update Error]:", err);
+      res.status(500).json({ success: false, message: "\u0930\u0947\u091F \u0915\u093E\u0930\u094D\u0921 \u0905\u092A\u0921\u0947\u091F \u0915\u0930\u0928\u0947 \u092E\u0947\u0902 \u0924\u094D\u0930\u0941\u091F\u093F\u0964" });
+    }
+  });
+  app.post("/api/owner/vendor/rate-card/add", (req, res) => {
+    try {
+      const { name, hindiName, category, categoryLabel, portions, inStock } = req.body || {};
+      if (!name) return res.status(400).json({ success: false, message: "\u0921\u093F\u0936 \u0915\u093E \u0928\u093E\u092E \u0905\u0928\u093F\u0935\u093E\u0930\u094D\u092F \u0939\u0948\u0964" });
+      const newId = addRateCardItemToCSV({
+        name,
+        hindiName,
+        category,
+        categoryLabel,
+        portions: Array.isArray(portions) && portions.length > 0 ? portions : [{ size: "Standard", listingPrice: 99, vendorPayoutRate: 40 }],
+        inStock: inStock !== false
+      });
+      res.json({
+        success: true,
+        dishId: newId,
+        message: `\u0928\u0908 \u0921\u093F\u0936 "${name}" \u092E\u093E\u0938\u094D\u091F\u0930 \u0930\u0947\u091F \u0915\u093E\u0930\u094D\u0921 \u092E\u0947\u0902 \u0938\u092B\u0932\u0924\u093E\u092A\u0942\u0930\u094D\u0935\u0915 \u091C\u0941\u0921\u093C \u0917\u0908!`
+      });
+    } catch (err) {
+      console.error("[Rate Card Add Error]:", err);
+      res.status(500).json({ success: false, message: "\u0921\u093F\u0936 \u091C\u094B\u0921\u093C\u0928\u0947 \u092E\u0947\u0902 \u0924\u094D\u0930\u0941\u091F\u093F\u0964" });
+    }
+  });
+  app.post("/api/owner/vendor/rate-card/toggle-stock", (req, res) => {
+    try {
+      const { itemId, inStock } = req.body || {};
+      if (!itemId) return res.status(400).json({ success: false, message: "Item ID \u0905\u0928\u093F\u0935\u093E\u0930\u094D\u092F \u0939\u0948\u0964" });
+      const updated = updateRateCardItemInCSV(itemId, { inStock: Boolean(inStock) });
+      res.json({
+        success: updated,
+        inStock: Boolean(inStock),
+        message: `\u0921\u093F\u0936 \u0915\u093E \u0938\u094D\u091F\u0949\u0915 \u0938\u094D\u091F\u0947\u091F\u0938 ${inStock ? "\u0909\u092A\u0932\u092C\u094D\u0927 (In Stock)" : "\u0938\u092E\u093E\u092A\u094D\u0924 (Out of Stock)"} \u0938\u0947\u091F \u0939\u094B \u0917\u092F\u093E\u0964`
+      });
+    } catch (err) {
+      res.status(500).json({ success: false, message: "\u0938\u094D\u091F\u0949\u0915 \u092C\u0926\u0932\u0928\u0947 \u092E\u0947\u0902 \u0924\u094D\u0930\u0941\u091F\u093F\u0964" });
+    }
+  });
+  app.post("/api/owner/vendor/rate-card/delete", (req, res) => {
+    try {
+      const { itemId } = req.body || {};
+      if (!itemId) return res.status(400).json({ success: false, message: "Item ID \u0905\u0928\u093F\u0935\u093E\u0930\u094D\u092F \u0939\u0948\u0964" });
+      deleteRateCardItemFromCSV(itemId);
+      res.json({ success: true, message: "\u0921\u093F\u0936 \u092E\u093E\u0938\u094D\u091F\u0930 \u0930\u0947\u091F \u0915\u093E\u0930\u094D\u0921 \u0938\u0947 \u0939\u091F\u093E \u0926\u0940 \u0917\u0908\u0964" });
+    } catch (err) {
+      res.status(500).json({ success: false, message: "\u0921\u093F\u0936 \u0939\u091F\u093E\u0928\u0947 \u092E\u0947\u0902 \u0924\u094D\u0930\u0941\u091F\u093F\u0964" });
+    }
+  });
+  app.post("/api/owner/vendor/dishes/review", (req, res) => {
+    try {
+      const { dishId, action, notes } = req.body || {};
+      if (!dishId || !action) {
+        return res.status(400).json({ success: false, message: "Dish ID \u0914\u0930 Action (APPROVE / REJECT) \u0905\u0928\u093F\u0935\u093E\u0930\u094D\u092F \u0939\u0948\u0902\u0964" });
+      }
+      const vault = loadVendorVault();
+      const dish = (vault.pendingDishes || []).find((d) => d.id === dishId);
+      if (!dish) {
+        return res.status(404).json({ success: false, message: "\u0921\u093F\u0936 \u0906\u0935\u0947\u0926\u0928 \u0928\u0939\u0940\u0902 \u092E\u093F\u0932\u093E\u0964" });
+      }
+      if (action.toUpperCase() === "APPROVE") {
+        dish.status = "APPROVED";
+        dish.approvedAt = (/* @__PURE__ */ new Date()).toISOString();
+        dish.notes = notes || "\u092E\u093E\u0932\u093F\u0915 \u0926\u094D\u0935\u093E\u0930\u093E \u0905\u0928\u0941\u092E\u094B\u0926\u093F\u0924 (Approved by Owner)";
+        addRateCardItemToCSV({
+          id: dish.id,
+          name: dish.name,
+          hindiName: dish.hindiName,
+          category: dish.category,
+          categoryLabel: dish.categoryLabel,
+          portions: dish.portions,
+          inStock: true
+        });
+        saveVendorVault(vault);
+        return res.json({
+          success: true,
+          message: `\u0921\u093F\u0936 "${dish.name}" \u0938\u094D\u0935\u0940\u0915\u0943\u0924 \u0939\u094B \u0917\u0908 \u0914\u0930 \u092E\u093E\u0938\u094D\u091F\u0930 \u0930\u0947\u091F \u0915\u093E\u0930\u094D\u0921 \u092E\u0947\u0902 \u091C\u0941\u0921\u093C \u0917\u0908!`,
+          dish
+        });
+      } else {
+        dish.status = "REJECTED";
+        dish.notes = notes || "\u092E\u093E\u0932\u093F\u0915 \u0926\u094D\u0935\u093E\u0930\u093E \u0905\u0938\u094D\u0935\u0940\u0915\u0943\u0924 (Rejected)";
+        saveVendorVault(vault);
+        return res.json({
+          success: true,
+          message: `\u0921\u093F\u0936 "${dish.name}" \u0905\u0938\u094D\u0935\u0940\u0915\u0943\u0924 \u0915\u0930 \u0926\u0940 \u0917\u0908\u0964`,
+          dish
+        });
+      }
+    } catch (err) {
+      console.error("[Dish Review Error]:", err);
+      res.status(500).json({ success: false, message: "\u0921\u093F\u0936 \u0938\u092E\u0940\u0915\u094D\u0937\u093E \u0915\u0930\u0928\u0947 \u092E\u0947\u0902 \u0938\u092E\u0938\u094D\u092F\u093E\u0964" });
+    }
+  });
+  app.post("/api/owner/vendor/payout/disburse", (req, res) => {
+    try {
+      const { amount, utrNumber, paymentMode, notes } = req.body || {};
+      const numAmount = Number(amount);
+      if (!numAmount || numAmount <= 0) {
+        return res.status(400).json({ success: false, message: "\u092E\u093E\u0928\u094D\u092F \u092A\u0947\u0906\u0909\u091F \u0930\u093E\u0936\u093F \u0926\u0930\u094D\u091C \u0915\u0930\u0947\u0902\u0964" });
+      }
+      if (!utrNumber || String(utrNumber).trim().length < 3) {
+        return res.status(400).json({ success: false, message: "\u092C\u0948\u0902\u0915/UPI \u0915\u093E \u092E\u093E\u0928\u094D\u092F UTR / \u0930\u0947\u092B\u0930\u0947\u0902\u0938 \u0928\u0902\u092C\u0930 \u0905\u0928\u093F\u0935\u093E\u0930\u094D\u092F \u0939\u0948\u0964" });
+      }
+      const vault = loadVendorVault();
+      const currentBal = vault.wallet.currentBalance;
+      if (numAmount > currentBal) {
+        return res.status(400).json({
+          success: false,
+          message: `\u092A\u0947\u0906\u0909\u091F \u0930\u093E\u0936\u093F (\u20B9${numAmount}) \u0915\u0941\u0932 \u0935\u0949\u0932\u0947\u091F \u092C\u0948\u0932\u0947\u0902\u0938 (\u20B9${currentBal}) \u0938\u0947 \u0905\u0927\u093F\u0915 \u0928\u0939\u0940\u0902 \u0939\u094B \u0938\u0915\u0924\u0940\u0964`
+        });
+      }
+      vault.wallet.currentBalance = Math.max(0, currentBal - numAmount);
+      vault.wallet.lastSettlementDate = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+      const txn = {
+        id: `txn_payout_${Date.now()}`,
+        date: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
+        type: "payout_disbursed",
+        amount: numAmount,
+        description: `Monday Settlement Paid via ${paymentMode || "UPI"} (UTR: ${utrNumber})${notes ? ` - ${notes}` : ""}`,
+        referenceId: String(utrNumber).trim(),
+        utrNumber: String(utrNumber).trim(),
+        balanceAfter: vault.wallet.currentBalance,
+        status: "settled",
+        ownerApprovedBy: "Owner / Navovia Next HQ",
+        cyclePeriod: "Weekly Settlement"
+      };
+      vault.transactions.unshift(txn);
+      saveVendorVault(vault);
+      res.json({
+        success: true,
+        newBalance: vault.wallet.currentBalance,
+        transaction: txn,
+        message: `\u20B9${numAmount} \u0915\u093E \u0938\u094B\u092E\u0935\u093E\u0930 \u092A\u0947\u0906\u0909\u091F \u0938\u092B\u0932\u0924\u093E\u092A\u0942\u0930\u094D\u0935\u0915 \u091F\u094D\u0930\u093E\u0902\u0938\u092B\u0930 \u0926\u0930\u094D\u091C \u0939\u0941\u0906! \u0928\u092F\u093E \u092C\u0948\u0932\u0947\u0902\u0938: \u20B9${vault.wallet.currentBalance}`
+      });
+    } catch (err) {
+      console.error("[Payout Disburse Error]:", err);
+      res.status(500).json({ success: false, message: "\u092A\u0947\u0906\u0909\u091F \u0926\u0930\u094D\u091C \u0915\u0930\u0928\u0947 \u092E\u0947\u0902 \u0924\u094D\u0930\u0941\u091F\u093F\u0964" });
+    }
+  });
+  app.post("/api/owner/vendor/refunds/add", (req, res) => {
+    try {
+      const { orderId, customerRefundAmount, vendorCutDeducted, reason } = req.body || {};
+      const numDeduction = Number(vendorCutDeducted);
+      if (!numDeduction || numDeduction <= 0) {
+        return res.status(400).json({ success: false, message: "\u092E\u093E\u0928\u094D\u092F \u0915\u091F\u094C\u0924\u0940 \u0930\u093E\u0936\u093F \u0926\u0930\u094D\u091C \u0915\u0930\u0947\u0902\u0964" });
+      }
+      if (!reason) {
+        return res.status(400).json({ success: false, message: "\u0915\u091F\u094C\u0924\u0940 \u0915\u093E \u0915\u093E\u0930\u0923 \u0906\u0935\u0936\u094D\u092F\u0915 \u0939\u0948\u0964" });
+      }
+      const vault = loadVendorVault();
+      if (!vault.refundDeductions) vault.refundDeductions = [];
+      vault.wallet.currentBalance = Math.max(0, vault.wallet.currentBalance - numDeduction);
+      const record = {
+        id: `ded_${Date.now()}`,
+        orderId: String(orderId || "GEN-DEDUCT").trim(),
+        customerRefundAmount: Number(customerRefundAmount || numDeduction),
+        vendorCutDeducted: numDeduction,
+        reason: String(reason).trim(),
+        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+        status: "deducted"
+      };
+      vault.refundDeductions.unshift(record);
+      const txn = {
+        id: `txn_ded_${Date.now()}`,
+        date: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
+        type: "refund_deduction",
+        amount: numDeduction,
+        description: `Refund / Cancellation Deduction: Order #${record.orderId} - ${record.reason}`,
+        referenceId: record.orderId,
+        balanceAfter: vault.wallet.currentBalance,
+        status: "settled",
+        ownerApprovedBy: "Owner Operations Desk"
+      };
+      vault.transactions.unshift(txn);
+      saveVendorVault(vault);
+      res.json({
+        success: true,
+        record,
+        newBalance: vault.wallet.currentBalance,
+        message: `\u20B9${numDeduction} \u0915\u0940 \u0915\u091F\u094C\u0924\u0940 \u0926\u0930\u094D\u091C \u0915\u0940 \u0917\u0908\u0964 \u0928\u092F\u093E \u0935\u0949\u0932\u0947\u091F \u092C\u0948\u0932\u0947\u0902\u0938: \u20B9${vault.wallet.currentBalance}`
+      });
+    } catch (err) {
+      console.error("[Refund Deduction Error]:", err);
+      res.status(500).json({ success: false, message: "\u0915\u091F\u094C\u0924\u0940 \u0926\u0930\u094D\u091C \u0915\u0930\u0928\u0947 \u092E\u0947\u0902 \u0924\u094D\u0930\u0941\u091F\u093F\u0964" });
+    }
+  });
+  app.post("/api/owner/vendor/orders/update-status", (req, res) => {
+    try {
+      const { orderId, newStatus } = req.body || {};
+      if (!orderId || !newStatus) {
+        return res.status(400).json({ success: false, message: "Order ID \u0914\u0930 Status \u0905\u0928\u093F\u0935\u093E\u0930\u094D\u092F \u0939\u0948\u0902\u0964" });
+      }
+      const vault = loadVendorVault();
+      const order = (vault.orders || []).find((o) => o.id === orderId);
+      if (!order) {
+        return res.status(404).json({ success: false, message: "\u0911\u0930\u094D\u0921\u0930 \u0928\u0939\u0940\u0902 \u092E\u093F\u0932\u093E\u0964" });
+      }
+      order.status = newStatus;
+      if (newStatus === "delivered" && !order.payoutCreditedToWallet) {
+        order.payoutCreditedToWallet = true;
+        const payout = order.totalVendorPayout || 0;
+        vault.wallet.currentBalance += payout;
+        vault.wallet.totalLifetimeEarned += payout;
+        vault.transactions.unshift({
+          id: `txn_ord_${Date.now()}`,
+          date: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
+          type: "order_credit",
+          amount: payout,
+          description: `Order Settlement: ${order.itemName} (${order.orderNumber})`,
+          referenceId: order.orderNumber,
+          balanceAfter: vault.wallet.currentBalance,
+          status: "settled",
+          cyclePeriod: "Current Fri-Thu Cycle"
+        });
+      }
+      saveVendorVault(vault);
+      res.json({
+        success: true,
+        order,
+        walletBalance: vault.wallet.currentBalance,
+        message: `\u0911\u0930\u094D\u0921\u0930 \u0938\u094D\u091F\u0947\u091F\u0938 "${newStatus}" \u0905\u092A\u0921\u0947\u091F \u0939\u094B \u0917\u092F\u093E\u0964`
+      });
+    } catch (err) {
+      res.status(500).json({ success: false, message: "\u0938\u094D\u091F\u0947\u091F\u0938 \u0905\u092A\u0921\u0947\u091F \u0915\u0930\u0928\u0947 \u092E\u0947\u0902 \u0938\u092E\u0938\u094D\u092F\u093E\u0964" });
+    }
   });
 }
 export {
+  addRateCardItemToCSV,
+  deleteRateCardItemFromCSV,
   loadDynamicRateCard,
   pushEventToGoogleSheet,
-  registerVendorRoutes
+  registerVendorRoutes,
+  saveRateCardToCSV,
+  updateRateCardItemInCSV
 };
