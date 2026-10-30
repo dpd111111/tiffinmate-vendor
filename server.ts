@@ -3547,12 +3547,12 @@ async function startServer() {
       const { mealSlot = 'lunch', targetDate, dishes = [], totalPortions = 0, vegCount = 0, jainCount = 0, cookId = 'kitchen_cook', cookName = 'Devi Prasad Cook' } = req.body || {};
       const ist = getISTDate();
       const effDate = targetDate || ist.isoDateStr;
-      const handoverTime = ist.displayTime;
+      const handoverTime = (ist as any).displayTime || `${ist.hours}:${ist.minutes}`;
 
       const handoverRecord = {
         id: `handover_${effDate}_${mealSlot}`,
         date: effDate,
-        dateDisplay: ist.displayDate,
+        dateDisplay: (ist as any).displayDate || ist.isoDateStr,
         shift: mealSlot,
         shiftTitle: mealSlot === 'breakfast' ? '🌅 सुबह का नाश्ता (Breakfast)' : mealSlot === 'dinner' ? '🌙 रात का डिनर (Dinner)' : '☀️ दोपहर का लंच (Lunch)',
         totalPortions: Number(totalPortions) || 0,
