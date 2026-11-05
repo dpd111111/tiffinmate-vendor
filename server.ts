@@ -316,6 +316,23 @@ const SERVER_STAFF_REGISTRY: ServerStaffAccount[] = [
     assignedScopes: []
   },
   {
+    id: 'NIR8800',
+    name: 'NIR Cloud Kitchen Partner',
+    hindiName: 'NIR क्लाउड किचन वेंडर पार्टनर',
+    email: 'nir8800@tiffinmate.com',
+    phone: '+91 9118409672',
+    role: 'vendor',
+    userIds: ['nir8800', '8800', 'nir'],
+    passwords: ['Nir12388001', '1234', '123456'],
+    accessPin: '8800',
+    shift: 'All Day Cloud Kitchen (7 AM - 11 PM)',
+    zone: 'Central Cloud Kitchen Sector 22',
+    specialization: 'Pure Desi Ghee Thalis, Zomato/Swiggy 3P & Tiffin Production',
+    status: 'active',
+    activeStatus: 'active',
+    assignedScopes: ['orders', 'rate_card', 'wallet', 'inventory', 'profile']
+  },
+  {
     id: 'I',
     name: 'Devi Prasad Inventory',
     hindiName: 'देवी प्रसाद (इन्वेंट्री स्टोरकीपर)',
@@ -4766,10 +4783,23 @@ Return JSON strictly following this schema with no markdown or formatting outsid
   app.get('{*path}', sendSpaHtml);
   app.use(sendSpaHtml);
 
-  // Bind to host 0.0.0.0 and port immediately so Cloud Run health check passes instantly
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[TiffinMate Server] Secure Fullstack Server running on http://0.0.0.0:${PORT}`);
+  // Always listen on port 3000 as required by AI Studio Build dev server environment
+  const AI_STUDIO_PORT = 3000;
+  app.listen(AI_STUDIO_PORT, '0.0.0.0', () => {
+    console.log(`[TiffinMate Server] Secure Fullstack Server running on http://0.0.0.0:${AI_STUDIO_PORT}`);
   });
+
+  // If container environment specifies a different PORT (e.g. 8080 on Cloud Run), bind to it as well
+  if (process.env.PORT && parseInt(process.env.PORT, 10) !== AI_STUDIO_PORT) {
+    const containerPort = parseInt(process.env.PORT, 10);
+    try {
+      app.listen(containerPort, '0.0.0.0', () => {
+        console.log(`[TiffinMate Server] Container listener also running on http://0.0.0.0:${containerPort}`);
+      });
+    } catch (bindErr) {
+      console.warn('[TiffinMate Server] Secondary port bind note:', bindErr);
+    }
+  }
 
   // Non-blocking background sync on startup
   (async () => {

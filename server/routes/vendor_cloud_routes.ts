@@ -23,6 +23,9 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { VENDOR_MASTER_RATE_CARD } from '../../management/vendor/vendor_rate_card_data';
+import { readJsonSafe, writeJsonSafe, syncFromFirestoreSnapshot } from '../database/core_database';
+
+export { VENDOR_MASTER_RATE_CARD };
 
 export interface VendorOrderItem {
   itemId: string;
@@ -60,10 +63,67 @@ export interface VendorPunchedOrder {
   isMultiItem?: boolean;
 }
 
+export interface IncentiveTier {
+  id: string;
+  milestoneMeals: number; // e.g. 25, 50, 100, 200
+  bonusAmount: number; // e.g. 150, 350, 800, 1800
+  title: string;
+  badge: string;
+  description: string;
+}
+
+export interface IncentiveRecord {
+  id: string;
+  vendorId: string;
+  type: 'milestone' | 'spot_bonus' | 'ontime_rating' | 'festival_surge';
+  amount: number;
+  mealsCompleted?: number;
+  reason: string;
+  grantedBy: string;
+  grantedAt: string;
+  cyclePeriod?: string;
+  tierId?: string;
+}
+
+export interface IncentiveSystemConfig {
+  enabled: boolean;
+  tiers: IncentiveTier[];
+  onTimeBonusPerMeal: number;
+  zeroComplaintWeeklyBonus: number;
+  dailyZeroCancellationBonus: number;
+  weeklyHundredPercentOnlineBonus: number;
+}
+
+export interface WeeklyIncentiveStats {
+  deliveredMealsThisCycle: number;
+  currentMilestoneTier: IncentiveTier | null;
+  nextMilestoneTier: IncentiveTier | null;
+  mealsNeededForNextTier: number;
+  progressPercent: number;
+  totalIncentiveEarnedThisCycle: number;
+  totalLifetimeIncentives: number;
+  cycleStart: string;
+  cycleEnd: string;
+}
+
+export const DEFAULT_INCENTIVE_CONFIG: IncentiveSystemConfig = {
+  enabled: true,
+  tiers: [
+    { id: 'tier_bronze', milestoneMeals: 25, bonusAmount: 150, title: 'ब्राउन स्टार बोनस', badge: '🥉', description: '25 टिफिन डिलीवरी पर ₹150 बोनस' },
+    { id: 'tier_silver', milestoneMeals: 50, bonusAmount: 350, title: 'सिल्वर स्टार बोनस', badge: '🥈', description: '50 टिफिन डिलीवरी पर ₹350 बोनस' },
+    { id: 'tier_gold', milestoneMeals: 100, bonusAmount: 800, title: 'गोल्ड स्टार बोनस', badge: '🥇', description: '100 टिफिन डिलीवरी पर ₹800 बोनस' },
+    { id: 'tier_platinum', milestoneMeals: 200, bonusAmount: 1800, title: 'प्लैटिनम स्टार बोनस', badge: '💎', description: '200+ टिफिन डिलीवरी पर ₹1800 बोनस' }
+  ],
+  onTimeBonusPerMeal: 5,
+  zeroComplaintWeeklyBonus: 250,
+  dailyZeroCancellationBonus: 50,
+  weeklyHundredPercentOnlineBonus: 300
+};
+
 export interface VendorWalletTransaction {
   id: string;
   date: string;
-  type: 'order_credit' | 'payout_disbursed' | 'hold_reserve' | 'dns_adjustment' | 'refund_deduction';
+  type: 'order_credit' | 'payout_disbursed' | 'hold_reserve' | 'dns_adjustment' | 'refund_deduction' | 'incentive_bonus';
   amount: number;
   description: string;
   referenceId?: string; // Order ID or Payout UTR
@@ -109,10 +169,185 @@ export interface KitchenInventoryItem {
   lastUpdated: string;
 }
 
-const VENDOR_STORAGE_FILE = path.join(process.cwd(), 'server_vendor_vault.json');
+export interface DailyMenuItem {
+  dishId: string;
+  name: string;
+  hindiName: string;
+  category?: string;
+  listingPrice: number;
+  vendorPayoutRate: number;
+  mealSlot: 'lunch' | 'dinner' | 'breakfast_snack' | 'all_day';
+  isFixedDaily?: boolean;
+}
 
-// Default initial state
-interface VendorVaultState {
+export interface CalendarDateSchedule {
+  date: string; // YYYY-MM-DD e.g. "2026-11-01"
+  dayNameHindi: string;
+  specialCurry?: string;
+  specialRice?: string;
+  specialBread?: string;
+  lunchDishes: DailyMenuItem[];
+  dinnerDishes: DailyMenuItem[];
+  regularFixedDishes?: DailyMenuItem[];
+  isCustomOverride?: boolean;
+  notes?: string;
+}
+
+export interface DailyMenuConfig {
+  regularFixedDishes: DailyMenuItem[];
+  dayWiseSchedules: Record<string, DayScheduleDetails>;
+  monthlyCalendarOverrides?: Record<string, CalendarDateSchedule>;
+  lunchSlotTime: string;
+  dinnerSlotTime: string;
+  breakfastSlotTime: string;
+  lastUpdated: string;
+}
+
+export const DEFAULT_DAILY_MENU_CONFIG: DailyMenuConfig = {
+  lunchSlotTime: '12:00 PM - 3:30 PM',
+  dinnerSlotTime: '7:30 PM - 10:30 PM',
+  breakfastSlotTime: '7:30 AM - 11:30 AM',
+  lastUpdated: new Date().toISOString(),
+  regularFixedDishes: [
+    { dishId: 'cmb_paratha_chai', name: 'Aloo Paratha (2 Pcs) + Cutting Chai Combo', hindiName: 'आलू पराठा (2 Pcs) + कटिंग चाय कॉम्बो', listingPrice: 129, vendorPayoutRate: 45, mealSlot: 'all_day', isFixedDaily: true },
+    { dishId: 'cmb_poha_chai', name: 'Indori Poha + Masala Chai Combo', hindiName: 'इंदौरी पोहा + मसाला चाय कॉम्बो', listingPrice: 99, vendorPayoutRate: 35, mealSlot: 'all_day', isFixedDaily: true },
+    { dishId: 'cmb_samosa_chai', name: 'Desi Samosa (2 Pcs) + Adrak Chai Combo', hindiName: 'देसी समोसा (2 Pcs) + अदरक चाय कॉम्बो', listingPrice: 89, vendorPayoutRate: 30, mealSlot: 'all_day', isFixedDaily: true },
+    { dishId: 'brd_tawa_roti', name: 'Plain Tawa Roti', hindiName: 'तवा रोटी (प्लेन)', listingPrice: 15, vendorPayoutRate: 5, mealSlot: 'all_day', isFixedDaily: true },
+    { dishId: 'mon_yellow_dal_tadka', name: 'Yellow Dal Tadka', hindiName: 'येलो दाल तड़का', listingPrice: 129, vendorPayoutRate: 50, mealSlot: 'all_day', isFixedDaily: true },
+    { dishId: 'brd_plain_rice', name: 'Plain Basmati Rice (300g)', hindiName: 'प्लेन बासमती राइस (300 ग्राम)', listingPrice: 99, vendorPayoutRate: 35, mealSlot: 'all_day', isFixedDaily: true },
+    { dishId: 'snk_adrak_chai', name: 'Kulhad Adrak Chai (2 Cups)', hindiName: 'कुल्हड़ अदरक चाय (2 कप)', listingPrice: 59, vendorPayoutRate: 20, mealSlot: 'all_day', isFixedDaily: true },
+    { dishId: 'mon_daily_thali', name: 'TiffinMate Homestyle Executive Thali', hindiName: 'टिफ़िनमैट होमस्टाइल एग्जीक्यूटिव थाली', listingPrice: 249, vendorPayoutRate: 80, mealSlot: 'all_day', isFixedDaily: true },
+    { dishId: 'snk_paneer_paratha', name: 'Amul Butter Paneer Paratha (2 Pcs)', hindiName: 'अमुल बटर पनीर पराठा (2 Pcs)', listingPrice: 149, vendorPayoutRate: 55, mealSlot: 'all_day', isFixedDaily: true },
+    { dishId: 'vrat_sabudana_khichdi', name: 'Sabudana Khichdi (Vrat Special)', hindiName: 'साबूदाना खिचड़ी (व्रत स्पेशल)', listingPrice: 149, vendorPayoutRate: 55, mealSlot: 'all_day', isFixedDaily: true }
+  ],
+  dayWiseSchedules: {
+    monday: {
+      dayId: 'monday',
+      dayNameHindi: 'सोमवार (Monday)',
+      specialCurry: 'आलू मटर व कड़ाई पनीर',
+      specialRice: 'जीरा राइस',
+      specialBread: 'तवा रोटी',
+      lunchDishes: [
+        { dishId: 'mon_aloo_matar', name: 'Aloo Matar', hindiName: 'आलू मटर', listingPrice: 149, vendorPayoutRate: 50, mealSlot: 'lunch' },
+        { dishId: 'mon_yellow_dal_tadka', name: 'Yellow Dal Tadka', hindiName: 'येलो दाल तड़का', listingPrice: 129, vendorPayoutRate: 50, mealSlot: 'lunch' },
+        { dishId: 'mon_kadhai_paneer', name: 'Kadhai Paneer', hindiName: 'कढ़ाई पनीर', listingPrice: 169, vendorPayoutRate: 65, mealSlot: 'lunch' },
+        { dishId: 'mon_kadhai_paneer_rice_bowl', name: 'Kadhai Paneer with Rice Bowl', hindiName: 'कढ़ाई पनीर विथ राइस बाउल', listingPrice: 199, vendorPayoutRate: 75, mealSlot: 'lunch' },
+        { dishId: 'mon_daily_thali', name: 'Monday Daily Thali', hindiName: 'सोमवार डेली थाली', listingPrice: 249, vendorPayoutRate: 80, mealSlot: 'lunch' }
+      ],
+      dinnerDishes: [
+        { dishId: 'mon_kadhai_paneer', name: 'Kadhai Paneer', hindiName: 'कढ़ाई पनीर', listingPrice: 169, vendorPayoutRate: 65, mealSlot: 'dinner' },
+        { dishId: 'mon_yellow_dal_rice_bowl', name: 'Yellow Dal Tadka with Rice Bowl', hindiName: 'दाल तड़का विथ राइस बाउल', listingPrice: 169, vendorPayoutRate: 60, mealSlot: 'dinner' },
+        { dishId: 'mon_deluxe_thali', name: 'Monday Deluxe Thali', hindiName: 'सोमवार डीलक्स थाली', listingPrice: 299, vendorPayoutRate: 100, mealSlot: 'dinner' },
+        { dishId: 'mon_premium_thali', name: 'Monday Premium Thali', hindiName: 'सोमवार प्रीमियम थाली', listingPrice: 399, vendorPayoutRate: 135, mealSlot: 'dinner' }
+      ]
+    },
+    tuesday: {
+      dayId: 'tuesday',
+      dayNameHindi: 'मंगलवार (Tuesday)',
+      specialCurry: 'भिंडी मसाला व शाही पनीर',
+      specialRice: 'प्लेन बासमती राइस',
+      specialBread: 'बटर तवा रोटी',
+      lunchDishes: [
+        { dishId: 'tue_bhindi_masala', name: 'Bhindi Masala', hindiName: 'भिंडी मसाला', listingPrice: 139, vendorPayoutRate: 48, mealSlot: 'lunch' },
+        { dishId: 'tue_chana_dal', name: 'Chana Dal Fry', hindiName: 'चना दाल फ्राइड', listingPrice: 129, vendorPayoutRate: 45, mealSlot: 'lunch' },
+        { dishId: 'tue_shahi_paneer', name: 'Shahi Paneer', hindiName: 'शाही पनीर', listingPrice: 179, vendorPayoutRate: 70, mealSlot: 'lunch' },
+        { dishId: 'tue_daily_thali', name: 'Tuesday Daily Thali', hindiName: 'मंगलवार डेली थाली', listingPrice: 249, vendorPayoutRate: 80, mealSlot: 'lunch' }
+      ],
+      dinnerDishes: [
+        { dishId: 'tue_shahi_paneer', name: 'Shahi Paneer', hindiName: 'शाही पनीर', listingPrice: 179, vendorPayoutRate: 70, mealSlot: 'dinner' },
+        { dishId: 'tue_rajma_masala', name: 'Rajma Masala with Rice Bowl', hindiName: 'राजमा चावल बाउल', listingPrice: 179, vendorPayoutRate: 65, mealSlot: 'dinner' },
+        { dishId: 'tue_deluxe_thali', name: 'Tuesday Deluxe Thali', hindiName: 'मंगलवार डीलक्स थाली', listingPrice: 299, vendorPayoutRate: 100, mealSlot: 'dinner' }
+      ]
+    },
+    wednesday: {
+      dayId: 'wednesday',
+      dayNameHindi: 'बुधवार (Wednesday)',
+      specialCurry: 'राजमा मसाला व पनीर बटर मसाला',
+      specialRice: 'मटर पुलाव',
+      specialBread: 'तवा रोटी',
+      lunchDishes: [
+        { dishId: 'wed_rajma_masala', name: 'Punjabi Rajma Masala', hindiName: 'पंजाबी राजमा मसाला', listingPrice: 149, vendorPayoutRate: 52, mealSlot: 'lunch' },
+        { dishId: 'wed_paneer_butter_masala', name: 'Paneer Butter Masala', hindiName: 'पनीर बटर मसाला', listingPrice: 189, vendorPayoutRate: 72, mealSlot: 'lunch' },
+        { dishId: 'wed_daily_thali', name: 'Wednesday Daily Thali', hindiName: 'बुधवार डेली थाली', listingPrice: 249, vendorPayoutRate: 80, mealSlot: 'lunch' }
+      ],
+      dinnerDishes: [
+        { dishId: 'wed_paneer_butter_masala', name: 'Paneer Butter Masala', hindiName: 'पनीर बटर मसाला', listingPrice: 189, vendorPayoutRate: 72, mealSlot: 'dinner' },
+        { dishId: 'wed_rajma_rice_bowl', name: 'Rajma Chawal Combo Bowl', hindiName: 'राजमा चावल कॉम्बो बाउल', listingPrice: 179, vendorPayoutRate: 65, mealSlot: 'dinner' },
+        { dishId: 'wed_premium_thali', name: 'Wednesday Premium Thali', hindiName: 'बुधवार प्रीमियम थाली', listingPrice: 399, vendorPayoutRate: 135, mealSlot: 'dinner' }
+      ]
+    },
+    thursday: {
+      dayId: 'thursday',
+      dayNameHindi: 'गुरुवार (Thursday)',
+      specialCurry: 'कढ़ी पकोड़ा व मटर पनीर',
+      specialRice: 'स्टीम्ड बासमती राइस',
+      specialBread: 'तवा रोटी',
+      lunchDishes: [
+        { dishId: 'thu_kadhi_pakoda', name: 'Punjabi Kadhi Pakoda', hindiName: 'पंजाबी कढ़ी पकोड़ा', listingPrice: 139, vendorPayoutRate: 48, mealSlot: 'lunch' },
+        { dishId: 'thu_matar_paneer', name: 'Matar Paneer', hindiName: 'मटर पनीर', listingPrice: 169, vendorPayoutRate: 65, mealSlot: 'lunch' },
+        { dishId: 'thu_daily_thali', name: 'Thursday Daily Thali', hindiName: 'गुरुवार डेली थाली', listingPrice: 249, vendorPayoutRate: 80, mealSlot: 'lunch' }
+      ],
+      dinnerDishes: [
+        { dishId: 'thu_matar_paneer', name: 'Matar Paneer', hindiName: 'मटर पनीर', listingPrice: 169, vendorPayoutRate: 65, mealSlot: 'dinner' },
+        { dishId: 'thu_kadhi_rice_bowl', name: 'Kadhi Chawal Combo Bowl', hindiName: 'कढ़ी चावल कॉम्बो बाउल', listingPrice: 169, vendorPayoutRate: 60, mealSlot: 'dinner' },
+        { dishId: 'thu_deluxe_thali', name: 'Thursday Deluxe Thali', hindiName: 'गुरुवार डीलक्स थाली', listingPrice: 299, vendorPayoutRate: 100, mealSlot: 'dinner' }
+      ]
+    },
+    friday: {
+      dayId: 'friday',
+      dayNameHindi: 'शुक्रवार (Friday)',
+      specialCurry: 'छोले मसाला व पनीर दो प्याज़ा',
+      specialRice: 'जीरा राइस',
+      specialBread: 'तवा रोटी / भटूरे',
+      lunchDishes: [
+        { dishId: 'fri_chhole_masala', name: 'Amritsari Chhole Masala', hindiName: 'अमृतसरी छोले मसाला', listingPrice: 149, vendorPayoutRate: 52, mealSlot: 'lunch' },
+        { dishId: 'fri_paneer_do_pyaza', name: 'Paneer Do Pyaza', hindiName: 'पनीर दो प्याज़ा', listingPrice: 179, vendorPayoutRate: 70, mealSlot: 'lunch' },
+        { dishId: 'fri_daily_thali', name: 'Friday Daily Thali', hindiName: 'शुक्रवार डेली थाली', listingPrice: 249, vendorPayoutRate: 80, mealSlot: 'lunch' }
+      ],
+      dinnerDishes: [
+        { dishId: 'fri_paneer_do_pyaza', name: 'Paneer Do Pyaza', hindiName: 'पनीर दो प्याज़ा', listingPrice: 179, vendorPayoutRate: 70, mealSlot: 'dinner' },
+        { dishId: 'fri_chhole_rice_bowl', name: 'Chhole Chawal Combo Bowl', hindiName: 'छोले चावल कॉम्बो बाउल', listingPrice: 179, vendorPayoutRate: 65, mealSlot: 'dinner' },
+        { dishId: 'fri_premium_thali', name: 'Friday Premium Thali', hindiName: 'शुक्रवार प्रीमियम थाली', listingPrice: 399, vendorPayoutRate: 135, mealSlot: 'dinner' }
+      ]
+    },
+    saturday: {
+      dayId: 'saturday',
+      dayNameHindi: 'शनिवार (Saturday)',
+      specialCurry: 'दम आलू व दाल मखनी',
+      specialRice: 'वेज पुलाव',
+      specialBread: 'तवा रोटी',
+      lunchDishes: [
+        { dishId: 'sat_dum_aloo', name: 'Kashmiri Dum Aloo', hindiName: 'कश्मीरी दम आलू', listingPrice: 149, vendorPayoutRate: 50, mealSlot: 'lunch' },
+        { dishId: 'sat_dal_makhani', name: 'Special Dal Makhani', hindiName: 'स्पेशल दाल मखनी', listingPrice: 169, vendorPayoutRate: 65, mealSlot: 'lunch' },
+        { dishId: 'sat_daily_thali', name: 'Saturday Daily Thali', hindiName: 'शनिवार डेली थाली', listingPrice: 249, vendorPayoutRate: 80, mealSlot: 'lunch' }
+      ],
+      dinnerDishes: [
+        { dishId: 'sat_dal_makhani', name: 'Special Dal Makhani', hindiName: 'स्पेशल दाल मखनी', listingPrice: 169, vendorPayoutRate: 65, mealSlot: 'dinner' },
+        { dishId: 'sat_malai_kofta', name: 'Malai Kofta Special', hindiName: 'मलाई कोफ्ता स्पेशल', listingPrice: 189, vendorPayoutRate: 75, mealSlot: 'dinner' },
+        { dishId: 'sat_deluxe_thali', name: 'Saturday Deluxe Thali', hindiName: 'शनिवार डीलक्स थाली', listingPrice: 299, vendorPayoutRate: 100, mealSlot: 'dinner' }
+      ]
+    },
+    sunday: {
+      dayId: 'sunday',
+      dayNameHindi: 'रविवार (Sunday)',
+      specialCurry: 'शाही पनीर व स्पेशल वेज बिरयानी',
+      specialRice: 'वेज बिरयानी विथ रायता',
+      specialBread: 'बटर तवा रोटी व गुलाब जामुन',
+      lunchDishes: [
+        { dishId: 'sun_veg_biryani', name: 'Special Veg Dum Biryani with Raita', hindiName: 'स्पेशल वेज दम बिरयानी विथ रायता', listingPrice: 199, vendorPayoutRate: 75, mealSlot: 'lunch' },
+        { dishId: 'sun_shahi_paneer', name: 'Desi Ghee Shahi Paneer', hindiName: 'देसी घी शाही पनीर', listingPrice: 189, vendorPayoutRate: 75, mealSlot: 'lunch' },
+        { dishId: 'sun_sunday_special_thali', name: 'Sunday Royal Feast Thali', hindiName: 'रविवार रॉयल फीस्ट थाली', listingPrice: 349, vendorPayoutRate: 120, mealSlot: 'lunch' }
+      ],
+      dinnerDishes: [
+        { dishId: 'sun_shahi_paneer', name: 'Desi Ghee Shahi Paneer', hindiName: 'देसी घी शाही पनीर', listingPrice: 189, vendorPayoutRate: 75, mealSlot: 'dinner' },
+        { dishId: 'sun_dal_makhani', name: 'Royal Dal Makhani', hindiName: 'रॉयल दाल मखनी', listingPrice: 169, vendorPayoutRate: 65, mealSlot: 'dinner' },
+        { dishId: 'sun_premium_thali', name: 'Sunday Premium Thali with Gulab Jamun', hindiName: 'रविवार प्रीमियम थाली (गुलाब जामुन सहित)', listingPrice: 399, vendorPayoutRate: 135, mealSlot: 'dinner' }
+      ]
+    }
+  }
+};
+
+export interface VendorVaultState {
   vendorId: string;
   orders: VendorPunchedOrder[];
   transactions: VendorWalletTransaction[];
@@ -128,6 +363,9 @@ interface VendorVaultState {
     notes?: string;
     upiId?: string;
   }>;
+  incentiveConfig?: IncentiveSystemConfig;
+  incentiveHistory?: IncentiveRecord[];
+  dailyMenuConfig?: DailyMenuConfig;
   sheetConfig?: {
     spreadsheetId: string;
     spreadsheetUrl: string;
@@ -149,21 +387,237 @@ export async function pushEventToGoogleSheet(_action: string, _payload: Record<s
   // Google Sheets completely removed as requested. All data managed internally via Owner Panel.
 }
 
-function loadVendorVault(): VendorVaultState {
+const VENDOR_STORAGE_FILE = path.join(process.cwd(), 'server_vendor_vault.json');
+const VENDOR_BACKUP_FILE = path.join(process.cwd(), 'server_vendor_vault_backup.json');
+const VENDOR_SNAPSHOT_FILE = path.join(process.cwd(), 'server_vendor_vault_snapshot.json');
+const VENDOR_PERMANENT_FILE = path.join(process.cwd(), 'server_vendor_vault_permanent.json');
+const EXTERNAL_IMPORTED_ORDERS_FILE = path.join(process.cwd(), 'server_external_zomato_orders.json');
+
+function mergeExternalImportedOrders(vault: VendorVaultState) {
   try {
-    if (fs.existsSync(VENDOR_STORAGE_FILE)) {
-      const raw = fs.readFileSync(VENDOR_STORAGE_FILE, 'utf-8');
-      const parsed = JSON.parse(raw);
-      if (!parsed.refundDeductions) parsed.refundDeductions = [];
-      if (!parsed.pendingDishes) parsed.pendingDishes = [];
-      if (!parsed.payoutRequests) parsed.payoutRequests = [];
-      return parsed;
+    const fileExists = fs.existsSync(EXTERNAL_IMPORTED_ORDERS_FILE);
+    if (fileExists) {
+      const raw = fs.readFileSync(EXTERNAL_IMPORTED_ORDERS_FILE, 'utf-8');
+      if (raw && raw.trim()) {
+        const parsed = JSON.parse(raw);
+        const externalOrders: VendorPunchedOrder[] = Array.isArray(parsed.orders) 
+          ? parsed.orders 
+          : (Array.isArray(parsed) ? parsed : []);
+        
+        if (externalOrders.length > 0) {
+          if (!vault.orders) vault.orders = [];
+          const existingIds = new Set(vault.orders.map(o => o.id));
+          for (const extOrd of externalOrders) {
+            if (!existingIds.has(extOrd.id)) {
+              vault.orders.push(extOrd);
+              existingIds.add(extOrd.id);
+            }
+          }
+        }
+      }
+    } else {
+      // Import file deleted by user: purge all imported Zomato orders from vault state
+      if (vault.orders && Array.isArray(vault.orders)) {
+        vault.orders = vault.orders.filter(o => !o.id || !o.id.startsWith('ORD-ZOMATO-'));
+      }
     }
   } catch (err) {
-    console.error('[Vendor Vault Read Error]:', err);
+    console.warn('[External Orders Sync Warning]:', err);
+  }
+}
+
+let inMemoryVendorVault: VendorVaultState | null = null;
+let inMemoryRateCard: any[] | null = null;
+
+function saveVendorVault(state: VendorVaultState): boolean {
+  try {
+    if (!state || typeof state !== 'object') return false;
+
+    // If import file was deleted, make sure state.orders doesn't contain ORD-ZOMATO- orders
+    const fileExists = fs.existsSync(EXTERNAL_IMPORTED_ORDERS_FILE);
+    if (!fileExists && state.orders && Array.isArray(state.orders)) {
+      state.orders = state.orders.filter(o => !o.id || !o.id.startsWith('ORD-ZOMATO-'));
+    }
+
+    // Safety Safeguard: Deep merge with disk data so no records are lost due to state race conditions
+    let existingOnDisk: VendorVaultState | null = null;
+    try {
+      const diskPath = fs.existsSync(VENDOR_STORAGE_FILE) ? VENDOR_STORAGE_FILE : 
+                       (fs.existsSync(VENDOR_BACKUP_FILE) ? VENDOR_BACKUP_FILE : VENDOR_PERMANENT_FILE);
+      if (fs.existsSync(diskPath)) {
+        const raw = fs.readFileSync(diskPath, 'utf-8');
+        if (raw && raw.trim()) {
+          existingOnDisk = JSON.parse(raw);
+        }
+      }
+    } catch {}
+
+    if (existingOnDisk) {
+      // Merge orders (skipping ORD-ZOMATO- if import file is missing)
+      if (Array.isArray(existingOnDisk.orders) && existingOnDisk.orders.length > 0) {
+        const diskOrders = fileExists 
+          ? existingOnDisk.orders 
+          : existingOnDisk.orders.filter(o => !o.id || !o.id.startsWith('ORD-ZOMATO-'));
+        const stateIds = new Set((state.orders || []).map(o => o.id));
+        const missingOrders = diskOrders.filter(o => !stateIds.has(o.id));
+        state.orders = [...(state.orders || []), ...missingOrders];
+      }
+
+      // Merge wallet transactions
+      if (Array.isArray(existingOnDisk.transactions) && existingOnDisk.transactions.length > 0) {
+        const stateIds = new Set((state.transactions || []).map(t => t.id));
+        const missingTxns = existingOnDisk.transactions.filter(t => !stateIds.has(t.id));
+        state.transactions = [...(state.transactions || []), ...missingTxns];
+      }
+
+      // Merge incentive history
+      if (Array.isArray(existingOnDisk.incentiveHistory) && existingOnDisk.incentiveHistory.length > 0) {
+        const stateIds = new Set((state.incentiveHistory || []).map(h => h.id));
+        const missingHistory = existingOnDisk.incentiveHistory.filter(h => !stateIds.has(h.id));
+        state.incentiveHistory = [...(state.incentiveHistory || []), ...missingHistory];
+      }
+
+      // Merge kitchen inventory
+      if (Array.isArray(existingOnDisk.inventory) && existingOnDisk.inventory.length > 0) {
+        const stateIds = new Set((state.inventory || []).map(i => i.id));
+        const missingItems = existingOnDisk.inventory.filter(i => !stateIds.has(i.id));
+        state.inventory = [...(state.inventory || []), ...missingItems];
+      }
+
+      // Merge pending dishes
+      if (Array.isArray(existingOnDisk.pendingDishes) && existingOnDisk.pendingDishes.length > 0) {
+        const stateIds = new Set((state.pendingDishes || []).map(d => d.id));
+        const missingDishes = existingOnDisk.pendingDishes.filter(d => !stateIds.has(d.id));
+        state.pendingDishes = [...(state.pendingDishes || []), ...missingDishes];
+      }
+
+      // Merge refund deductions
+      if (Array.isArray(existingOnDisk.refundDeductions) && existingOnDisk.refundDeductions.length > 0) {
+        const stateIds = new Set((state.refundDeductions || []).map(r => r.id));
+        const missingRefunds = existingOnDisk.refundDeductions.filter(r => !stateIds.has(r.id));
+        state.refundDeductions = [...(state.refundDeductions || []), ...missingRefunds];
+      }
+
+      // Preserve incentive config
+      if (!state.incentiveConfig && existingOnDisk.incentiveConfig) {
+        state.incentiveConfig = existingOnDisk.incentiveConfig;
+      }
+
+      // Preserve calendar overrides
+      if (existingOnDisk.dailyMenuConfig?.monthlyCalendarOverrides) {
+        if (!state.dailyMenuConfig) {
+          state.dailyMenuConfig = existingOnDisk.dailyMenuConfig;
+        } else if (!state.dailyMenuConfig.monthlyCalendarOverrides) {
+          state.dailyMenuConfig.monthlyCalendarOverrides = existingOnDisk.dailyMenuConfig.monthlyCalendarOverrides;
+        } else {
+          state.dailyMenuConfig.monthlyCalendarOverrides = {
+            ...existingOnDisk.dailyMenuConfig.monthlyCalendarOverrides,
+            ...state.dailyMenuConfig.monthlyCalendarOverrides
+          };
+        }
+      }
+    }
+
+    const jsonStr = JSON.stringify(state, null, 2);
+    if (!jsonStr || jsonStr.length < 10) return false;
+
+    inMemoryVendorVault = state;
+
+    // Save atomically across 4 redundant backup locations & Firestore cloud database
+    fs.writeFileSync(VENDOR_STORAGE_FILE, jsonStr, 'utf-8');
+    fs.writeFileSync(VENDOR_BACKUP_FILE, jsonStr, 'utf-8');
+    fs.writeFileSync(VENDOR_SNAPSHOT_FILE, jsonStr, 'utf-8');
+    fs.writeFileSync(VENDOR_PERMANENT_FILE, jsonStr, 'utf-8');
+    writeJsonSafe(VENDOR_STORAGE_FILE, state);
+    return true;
+  } catch (err) {
+    console.error('[Vendor Vault Save Error]:', err);
+    return false;
+  }
+}
+
+function loadVendorVault(): VendorVaultState {
+  if (inMemoryVendorVault && inMemoryVendorVault.vendorId) {
+    return inMemoryVendorVault;
   }
 
-  // Clean Initial State with zero dummy data
+  const tryLoadFile = (filePath: string): VendorVaultState | null => {
+    try {
+      if (fs.existsSync(filePath)) {
+        const raw = fs.readFileSync(filePath, 'utf-8');
+        if (!raw || !raw.trim()) return null;
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && parsed.vendorId) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn(`[Vault Read Warning for ${filePath}]:`, e);
+    }
+    return null;
+  };
+
+  // Multi-Source Recovery: try primary, backup, snapshot, permanent file
+  let vault = tryLoadFile(VENDOR_STORAGE_FILE) || 
+              tryLoadFile(VENDOR_BACKUP_FILE) || 
+              tryLoadFile(VENDOR_SNAPSHOT_FILE) ||
+              tryLoadFile(VENDOR_PERMANENT_FILE);
+
+  if (vault) {
+    inMemoryVendorVault = vault;
+    // Deep preserve existing user data collections
+    if (!vault.orders) vault.orders = [];
+    if (!vault.transactions) vault.transactions = [];
+    if (!vault.inventory) vault.inventory = [];
+    if (!vault.refundDeductions) vault.refundDeductions = [];
+    if (!vault.pendingDishes) vault.pendingDishes = [];
+    if (!vault.payoutRequests) vault.payoutRequests = [];
+    if (!vault.incentiveHistory) vault.incentiveHistory = [];
+
+    if (!vault.wallet) {
+      vault.wallet = {
+        totalLifetimeEarned: 0,
+        currentBalance: 0,
+        minimumReserve: 2000,
+        tenDayHoldAmount: 0,
+        lastSettlementDate: 'None',
+        billingCycle: 'Friday to Thursday',
+        payoutDay: 'Monday'
+      };
+    }
+
+    if (!vault.incentiveConfig) {
+      vault.incentiveConfig = JSON.parse(JSON.stringify(DEFAULT_INCENTIVE_CONFIG));
+    } else {
+      vault.incentiveConfig = {
+        ...DEFAULT_INCENTIVE_CONFIG,
+        ...vault.incentiveConfig,
+        tiers: (vault.incentiveConfig.tiers && vault.incentiveConfig.tiers.length > 0)
+          ? vault.incentiveConfig.tiers
+          : DEFAULT_INCENTIVE_CONFIG.tiers
+      };
+    }
+
+    if (!vault.dailyMenuConfig) {
+      vault.dailyMenuConfig = JSON.parse(JSON.stringify(DEFAULT_DAILY_MENU_CONFIG));
+    } else {
+      if (!vault.dailyMenuConfig.regularFixedDishes) {
+        vault.dailyMenuConfig.regularFixedDishes = DEFAULT_DAILY_MENU_CONFIG.regularFixedDishes;
+      }
+      if (!vault.dailyMenuConfig.dayWiseSchedules) {
+        vault.dailyMenuConfig.dayWiseSchedules = DEFAULT_DAILY_MENU_CONFIG.dayWiseSchedules;
+      }
+      if (!vault.dailyMenuConfig.monthlyCalendarOverrides) {
+        vault.dailyMenuConfig.monthlyCalendarOverrides = {};
+      }
+    }
+
+    mergeExternalImportedOrders(vault);
+    return vault;
+  }
+
+  // Only if no vault file exists anywhere, create clean seed state
+  console.log('[Vendor Vault]: Initializing clean vault file...');
   const seedState: VendorVaultState = {
     vendorId: 'NIR8800',
     orders: [],
@@ -171,6 +625,10 @@ function loadVendorVault(): VendorVaultState {
     inventory: [],
     refundDeductions: [],
     pendingDishes: [],
+    payoutRequests: [],
+    incentiveConfig: JSON.parse(JSON.stringify(DEFAULT_INCENTIVE_CONFIG)),
+    incentiveHistory: [],
+    dailyMenuConfig: JSON.parse(JSON.stringify(DEFAULT_DAILY_MENU_CONFIG)),
     wallet: {
       totalLifetimeEarned: 0,
       currentBalance: 0,
@@ -182,18 +640,68 @@ function loadVendorVault(): VendorVaultState {
     }
   };
 
+  mergeExternalImportedOrders(seedState);
   saveVendorVault(seedState);
   return seedState;
 }
 
-function saveVendorVault(state: VendorVaultState): boolean {
-  try {
-    fs.writeFileSync(VENDOR_STORAGE_FILE, JSON.stringify(state, null, 2), 'utf-8');
-    return true;
-  } catch (err) {
-    console.error('[Vendor Vault Save Error]:', err);
-    return false;
+export function calculateVendorWeeklyIncentiveStats(vault: VendorVaultState): WeeklyIncentiveStats {
+  const config = vault.incentiveConfig || DEFAULT_INCENTIVE_CONFIG;
+  const tiers = config.tiers || [];
+  
+  // Delivered meals in current cycle (orders verified/delivered within last 7 days)
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  
+  let deliveredCount = 0;
+  for (const o of (vault.orders || [])) {
+    const isApprovedOrDelivered = o.verificationStatus === 'APPROVED' || o.status === 'delivered';
+    const orderDate = o.createdAt ? new Date(o.createdAt) : now;
+    if (isApprovedOrDelivered && orderDate >= sevenDaysAgo) {
+      if (Array.isArray(o.items) && o.items.length > 0) {
+        deliveredCount += o.items.reduce((s, it) => s + (it.quantity || 1), 0);
+      } else {
+        deliveredCount += (o.quantity || 1);
+      }
+    }
   }
+
+  // Sort tiers ascending by milestoneMeals
+  const sortedTiers = [...tiers].sort((a, b) => a.milestoneMeals - b.milestoneMeals);
+  let currentTier: IncentiveTier | null = null;
+  let nextTier: IncentiveTier | null = null;
+
+  for (const t of sortedTiers) {
+    if (deliveredCount >= t.milestoneMeals) {
+      currentTier = t;
+    } else {
+      if (!nextTier) {
+        nextTier = t;
+      }
+    }
+  }
+
+  const mealsNeeded = nextTier ? Math.max(0, nextTier.milestoneMeals - deliveredCount) : 0;
+  const targetDenominator = nextTier ? nextTier.milestoneMeals : (currentTier ? currentTier.milestoneMeals : 50);
+  const progressPercent = Math.min(100, Math.round((deliveredCount / targetDenominator) * 100));
+
+  // Calculate incentive earned from history
+  const history = vault.incentiveHistory || [];
+  const cycleIncentives = history.filter(h => h.grantedAt && new Date(h.grantedAt) >= sevenDaysAgo);
+  const totalIncentiveEarnedThisCycle = cycleIncentives.reduce((sum, h) => sum + (h.amount || 0), 0);
+  const totalLifetimeIncentives = history.reduce((sum, h) => sum + (h.amount || 0), 0);
+
+  return {
+    deliveredMealsThisCycle: deliveredCount,
+    currentMilestoneTier: currentTier,
+    nextMilestoneTier: nextTier,
+    mealsNeededForNextTier: mealsNeeded,
+    progressPercent,
+    totalIncentiveEarnedThisCycle,
+    totalLifetimeIncentives,
+    cycleStart: sevenDaysAgo.toISOString().split('T')[0],
+    cycleEnd: now.toISOString().split('T')[0]
+  };
 }
 
 function parseCSVLine(line: string): string[] {
@@ -216,6 +724,12 @@ function parseCSVLine(line: string): string[] {
 }
 
 export function loadDynamicRateCard(): any[] {
+  const syncedJsonPath = path.join(process.cwd(), 'server_rate_card_synced.json');
+  const jsonBackup = readJsonSafe<any[]>(syncedJsonPath, []);
+  if (Array.isArray(jsonBackup) && jsonBackup.length > 0) {
+    return jsonBackup;
+  }
+
   const syncedFile = path.join(process.cwd(), 'server_rate_card_synced.csv');
   const assetFile = path.join(process.cwd(), 'public/assets/aistudio/NOV_TIFFIN_-_Master_Vendor_Ledger___Rate_Card_142d571c');
   const filePath = fs.existsSync(syncedFile) ? syncedFile : (fs.existsSync(assetFile) ? assetFile : null);
@@ -341,6 +855,8 @@ export function saveRateCardToCSV(items: any[]): void {
     }
     const syncedFilePath = path.join(process.cwd(), 'server_rate_card_synced.csv');
     fs.writeFileSync(syncedFilePath, lines.join('\n'), 'utf-8');
+    const syncedJsonPath = path.join(process.cwd(), 'server_rate_card_synced.json');
+    writeJsonSafe(syncedJsonPath, items);
   } catch (e) {
     console.error('[saveRateCardToCSV Error]:', e);
   }
@@ -443,6 +959,44 @@ export function registerVendorRoutes(app: express.Express, authenticateStaffOrOw
     });
   });
 
+  // 1b-2. Vendor Change / Setup Password Endpoint
+  app.post('/api/vendor/change-password', (req, res) => {
+    try {
+      const { vendorId, currentPassword, newPassword } = req.body || {};
+      const targetId = String(vendorId || 'NIR8800').trim();
+      const cleanNew = String(newPassword || '').trim();
+      const cleanCurrent = String(currentPassword || '').trim();
+
+      if (!cleanNew || cleanNew.length < 4) {
+        return res.status(400).json({ success: false, message: 'नया पासवर्ड कम से कम 4 अक्षरों का होना चाहिए।' });
+      }
+
+      const staffVaultPath = path.join(process.cwd(), 'server_staff_vault.json');
+      if (fs.existsSync(staffVaultPath)) {
+        const staff = JSON.parse(fs.readFileSync(staffVaultPath, 'utf-8'));
+        const member = staff.find((s: any) => 
+          s.id.toLowerCase() === targetId.toLowerCase() || 
+          (Array.isArray(s.userIds) && s.userIds.map((u: string) => u.toLowerCase()).includes(targetId.toLowerCase()))
+        );
+        if (member) {
+          if (cleanCurrent && Array.isArray(member.passwords) && !member.passwords.includes(cleanCurrent)) {
+            return res.status(401).json({ success: false, message: 'वर्तमान पासवर्ड अमान्य है।' });
+          }
+          if (!member.passwords) member.passwords = [];
+          if (!member.passwords.includes(cleanNew)) {
+            member.passwords.unshift(cleanNew);
+          }
+          fs.writeFileSync(staffVaultPath, JSON.stringify(staff, null, 2), 'utf-8');
+          return res.json({ success: true, message: 'नया वेंडर पासवर्ड सफलतापूर्वक सेट व सुरक्षित हो गया!' });
+        }
+      }
+      return res.status(404).json({ success: false, message: 'वेंडर खाता नहीं मिला।' });
+    } catch (err: any) {
+      console.error('[Vendor Change Password Error]:', err);
+      return res.status(500).json({ success: false, message: 'पासवर्ड अपडेट करने में सर्वर समस्या।' });
+    }
+  });
+
   // 1b. Manually Upload / Sync CSV Rate Card
   app.post('/api/vendor/rate-card/sync-csv', (req, res) => {
     try {
@@ -517,8 +1071,11 @@ export function registerVendorRoutes(app: express.Express, authenticateStaffOrOw
     const reserve = vault.wallet.minimumReserve || 2000;
     const hold = vault.wallet.tenDayHoldAmount || 0;
     
-    // Amount above ₹2,000 is eligible for Monday payout
+    // Reserve calculation logic
+    const currentReserveAccumulated = Math.min(balance, reserve);
+    const remainingReserveNeeded = Math.max(0, reserve - balance);
     const eligibleAmount = Math.max(0, balance - reserve - hold);
+    const incentiveStats = calculateVendorWeeklyIncentiveStats(vault);
 
     res.json({
       success: true,
@@ -526,20 +1083,26 @@ export function registerVendorRoutes(app: express.Express, authenticateStaffOrOw
         ...vault.wallet,
         currentBalance: balance,
         minimumReserve: reserve,
+        currentReserveAccumulated,
+        remainingReserveNeeded,
         tenDayHoldAmount: hold,
+        eligibleTuesdayPayout: eligibleAmount,
         eligibleMondayPayout: eligibleAmount,
         canRequestPayout: eligibleAmount > 0,
         refundDeductionsTotal: (vault.refundDeductions || []).reduce((acc, r) => acc + (r.vendorCutDeducted || 0), 0),
         ruleSummary: {
           minimumReserveRule: 'वॉलेट में हमेशा ₹2,000 न्यूनतम रिज़र्व बैलेंस रहेगा।',
-          payoutSchedule: 'शुक्रवार से गुरुवार के बिलिंग चक्र का शेष हर सोमवार को ट्रांसफर होगा।',
+          payoutSchedule: 'शुक्रवार से गुरुवार के बिलिंग चक्र का भुगतान 1 हफ्ते के रोलिंग अंतराल पर हर मंगलवार (Tuesday) को ट्रांसफर होगा।',
           tenDayHoldRule: '10 दिन का भुगतान होल्ड पर रहेगा, जो DNS/डिस्प्यूट समाधान के समय रिलीज होगा।',
           refundDeductionRule: 'कस्टमर कैंसिलेशन/रिफंड होने पर तय वेंडर का हिस्सा वॉलेट से स्वतः कटेगा।'
         }
       },
       transactions: vault.transactions.slice(0, 50),
       refundDeductions: (vault.refundDeductions || []).slice(0, 30),
-      payoutRequests: vault.payoutRequests || []
+      payoutRequests: vault.payoutRequests || [],
+      incentiveStats,
+      incentiveConfig: vault.incentiveConfig || DEFAULT_INCENTIVE_CONFIG,
+      incentiveHistory: (vault.incentiveHistory || []).slice(0, 50)
     });
   });
 
@@ -880,25 +1443,31 @@ export function registerVendorRoutes(app: express.Express, authenticateStaffOrOw
 
       order.status = newStatus;
 
-      // When order is marked delivered and hasn't been credited yet, credit to wallet!
-      if (newStatus === 'delivered' && !order.payoutCreditedToWallet) {
-        order.payoutCreditedToWallet = true;
-        const payout = order.totalVendorPayout || 0;
-        
-        vault.wallet.currentBalance += payout;
-        vault.wallet.totalLifetimeEarned += payout;
+      // When order is marked delivered by vendor, require Devi (Owner) approval before crediting wallet
+      let message = `ऑर्डर स्टेटस "${newStatus}" अपडेट हो गया।`;
+      if (newStatus === 'delivered') {
+        if (order.verificationStatus === 'APPROVED' && !order.payoutCreditedToWallet) {
+          order.payoutCreditedToWallet = true;
+          const payout = order.totalVendorPayout || 0;
+          vault.wallet.currentBalance += payout;
+          vault.wallet.totalLifetimeEarned += payout;
 
-        vault.transactions.unshift({
-          id: `txn_ord_${Date.now()}`,
-          date: new Date().toISOString().split('T')[0],
-          type: 'order_credit',
-          amount: payout,
-          description: `Order Settlement: ${order.itemName} (${order.orderNumber})`,
-          referenceId: order.orderNumber,
-          balanceAfter: vault.wallet.currentBalance,
-          status: 'settled',
-          cyclePeriod: 'Current Fri-Thu Cycle'
-        });
+          vault.transactions.unshift({
+            id: `txn_ord_${Date.now()}`,
+            date: new Date().toISOString().split('T')[0],
+            type: 'order_credit',
+            amount: payout,
+            description: `Order Settlement: ${order.itemName} (${order.orderNumber})`,
+            referenceId: order.orderNumber,
+            balanceAfter: vault.wallet.currentBalance,
+            status: 'settled',
+            cyclePeriod: 'Current Fri-Thu Cycle'
+          });
+          message = `ऑर्डर डिलीवर हो गया और ₹${payout} वॉलेट में क्रेडिट हो गया!`;
+        } else if (!order.payoutCreditedToWallet) {
+          order.verificationStatus = 'PENDING_APPROVAL';
+          message = `ऑर्डर डिलीवर मार्क हो गया! 'देवी' (मालिक) द्वारा अप्रूवल मिलते ही ₹${order.totalVendorPayout} आपके वॉलेट में जुड़ जाएगा।`;
+        }
       }
 
       saveVendorVault(vault);
@@ -910,7 +1479,7 @@ export function registerVendorRoutes(app: express.Express, authenticateStaffOrOw
         success: true,
         order,
         walletBalance: vault.wallet.currentBalance,
-        message: `ऑर्डर स्टेटस "${newStatus}" अपडेट हो गया।`
+        message
       });
     } catch (err: any) {
       console.error('[Vendor Status Update Error]:', err);
@@ -1009,8 +1578,11 @@ export function registerVendorRoutes(app: express.Express, authenticateStaffOrOw
       const dynamicRateCard = loadDynamicRateCard();
       const grossEarned = vault.wallet.currentBalance;
       const reserve = vault.wallet.minimumReserve || 2000;
+      const currentReserveAccumulated = Math.min(grossEarned, reserve);
+      const remainingReserveNeeded = Math.max(0, reserve - grossEarned);
       const eligiblePay = Math.max(0, grossEarned - reserve);
       const totalRefundDeductions = (vault.refundDeductions || []).reduce((acc, r) => acc + (r.vendorCutDeducted || 0), 0);
+      const incentiveStats = calculateVendorWeeklyIncentiveStats(vault);
 
       res.json({
         success: true,
@@ -1019,17 +1591,635 @@ export function registerVendorRoutes(app: express.Express, authenticateStaffOrOw
         orders: vault.orders || [],
         wallet: {
           ...vault.wallet,
+          currentReserveAccumulated,
+          remainingReserveNeeded,
+          eligibleTuesdayPayout: eligiblePay,
           eligibleMondayPayout: eligiblePay,
           totalRefundDeductions
         },
+        dailyMenuConfig: vault.dailyMenuConfig || DEFAULT_DAILY_MENU_CONFIG,
         transactions: vault.transactions || [],
         refundDeductions: vault.refundDeductions || [],
         inventory: vault.inventory || [],
-        payoutRequests: vault.payoutRequests || []
+        payoutRequests: vault.payoutRequests || [],
+        incentiveStats,
+        incentiveConfig: vault.incentiveConfig || DEFAULT_INCENTIVE_CONFIG,
+        incentiveHistory: (vault.incentiveHistory || []).slice(0, 50)
       });
     } catch (err: any) {
       console.error('[Owner Vendor Overview Error]:', err);
       res.status(500).json({ success: false, message: 'वेंडर डेटा लोड करने में त्रुटि।' });
+    }
+  });
+
+  // =========================================================================
+  // 11. DAILY MENU & REGULAR FIX MENU MANAGEMENT APIS (Vendor & Owner)
+  // =========================================================================
+  app.get('/api/vendor/daily-menu', (_req, res) => {
+    try {
+      const vault = loadVendorVault();
+      const dailyConfig = vault.dailyMenuConfig || DEFAULT_DAILY_MENU_CONFIG;
+      
+      const now = new Date();
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const todayDayId = dayNames[now.getDay()] || 'monday';
+
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const todayDateStr = `${yyyy}-${mm}-${dd}`;
+
+      // Check date override first
+      const override = dailyConfig.monthlyCalendarOverrides?.[todayDateStr];
+      const weeklyFallback = dailyConfig.dayWiseSchedules[todayDayId] || dailyConfig.dayWiseSchedules.monday;
+
+      const todaySchedule = override || weeklyFallback;
+
+      res.json({
+        success: true,
+        todayDayId,
+        todayDateStr,
+        isCustomOverride: Boolean(override),
+        todaySchedule,
+        dailyMenuConfig: dailyConfig
+      });
+    } catch (err: any) {
+      console.error('[Get Daily Menu Error]:', err);
+      res.status(500).json({ success: false, message: 'दैनिक मेनू लोड करने में त्रुटि।' });
+    }
+  });
+
+  // Get Monthly Calendar Grid Data (Owner & Vendor)
+  app.get('/api/owner/daily-menu/monthly-calendar', (req, res) => {
+    try {
+      const year = parseInt(String(req.query.year || new Date().getFullYear()), 10);
+      const month = parseInt(String(req.query.month || (new Date().getMonth() + 1)), 10); // 1-12
+
+      const vault = loadVendorVault();
+      if (!vault.dailyMenuConfig) vault.dailyMenuConfig = JSON.parse(JSON.stringify(DEFAULT_DAILY_MENU_CONFIG));
+      if (!vault.dailyMenuConfig.monthlyCalendarOverrides) vault.dailyMenuConfig.monthlyCalendarOverrides = {};
+
+      const overrides = vault.dailyMenuConfig.monthlyCalendarOverrides;
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const hindiDayNames: Record<string, string> = {
+        sunday: 'रविवार',
+        monday: 'सोमवार',
+        tuesday: 'मंगलवार',
+        wednesday: 'बुधवार',
+        thursday: 'गुरुवार',
+        friday: 'शुक्रवार',
+        saturday: 'शनिवार'
+      };
+
+      const daysInMonth = new Date(year, month, 0).getDate();
+      const calendarDays: Array<{
+        dateStr: string; // YYYY-MM-DD
+        dayOfMonth: number;
+        dayOfWeek: string;
+        dayNameHindi: string;
+        isCustomOverride: boolean;
+        specialCurry: string;
+        specialRice: string;
+        specialBread: string;
+        lunchCount: number;
+        dinnerCount: number;
+        scheduleDetails: any;
+      }> = [];
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateObj = new Date(year, month - 1, d);
+        const mm = String(month).padStart(2, '0');
+        const dd = String(d).padStart(2, '0');
+        const dateStr = `${year}-${mm}-${dd}`;
+        const dayOfWeek = dayNames[dateObj.getDay()] || 'monday';
+
+        const custom = overrides[dateStr];
+        const weeklyFallback = vault.dailyMenuConfig.dayWiseSchedules[dayOfWeek] || vault.dailyMenuConfig.dayWiseSchedules.monday;
+
+        if (custom) {
+          calendarDays.push({
+            dateStr,
+            dayOfMonth: d,
+            dayOfWeek,
+            dayNameHindi: hindiDayNames[dayOfWeek] || 'सोमवार',
+            isCustomOverride: true,
+            specialCurry: custom.specialCurry || weeklyFallback.specialCurry || 'दैनिक विशेष',
+            specialRice: custom.specialRice || weeklyFallback.specialRice || 'जीरा राइस',
+            specialBread: custom.specialBread || weeklyFallback.specialBread || 'तवा रोटी',
+            lunchCount: (custom.lunchDishes || []).length,
+            dinnerCount: (custom.dinnerDishes || []).length,
+            scheduleDetails: custom
+          });
+        } else {
+          calendarDays.push({
+            dateStr,
+            dayOfMonth: d,
+            dayOfWeek,
+            dayNameHindi: hindiDayNames[dayOfWeek] || 'सोमवार',
+            isCustomOverride: false,
+            specialCurry: weeklyFallback.specialCurry || 'दैनिक विशेष',
+            specialRice: weeklyFallback.specialRice || 'जीरा राइस',
+            specialBread: weeklyFallback.specialBread || 'तवा रोटी',
+            lunchCount: (weeklyFallback.lunchDishes || []).length,
+            dinnerCount: (weeklyFallback.dinnerDishes || []).length,
+            scheduleDetails: weeklyFallback
+          });
+        }
+      }
+
+      res.json({
+        success: true,
+        year,
+        month,
+        totalDays: daysInMonth,
+        calendarDays,
+        dailyMenuConfig: vault.dailyMenuConfig
+      });
+    } catch (err: any) {
+      console.error('[Get Monthly Calendar Error]:', err);
+      res.status(500).json({ success: false, message: 'कैलेंडर लोड करने में त्रुटि।' });
+    }
+  });
+
+  // Bulk Update Calendar Dates (Owner Panel)
+  app.post('/api/owner/daily-menu/bulk-update-calendar', (req, res) => {
+    try {
+      const { dates, action, templateDayId, specialCurry, specialRice, specialBread, lunchDishes, dinnerDishes, regularFixedDishes, notes } = req.body || {};
+      
+      if (!Array.isArray(dates) || dates.length === 0) {
+        return res.status(400).json({ success: false, message: 'कम से कम एक तारीख (Date) चुनें।' });
+      }
+
+      const vault = loadVendorVault();
+      if (!vault.dailyMenuConfig) vault.dailyMenuConfig = JSON.parse(JSON.stringify(DEFAULT_DAILY_MENU_CONFIG));
+      if (!vault.dailyMenuConfig.monthlyCalendarOverrides) vault.dailyMenuConfig.monthlyCalendarOverrides = {};
+
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const hindiDayNames: Record<string, string> = {
+        sunday: 'रविवार',
+        monday: 'सोमवार',
+        tuesday: 'मंगलवार',
+        wednesday: 'बुधवार',
+        thursday: 'गुरुवार',
+        friday: 'शुक्रवार',
+        saturday: 'शनिवार'
+      };
+
+      if (action === 'clear_override') {
+        // Remove overrides for selected dates
+        for (const dt of dates) {
+          delete vault.dailyMenuConfig.monthlyCalendarOverrides[dt];
+        }
+      } else if (action === 'apply_template' && templateDayId) {
+        // Copy weekly day template to selected dates
+        const template = vault.dailyMenuConfig.dayWiseSchedules[templateDayId] || vault.dailyMenuConfig.dayWiseSchedules.monday;
+        for (const dt of dates) {
+          const parts = dt.split('-');
+          const dateObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+          const dayOfWeek = dayNames[dateObj.getDay()] || 'monday';
+
+          vault.dailyMenuConfig.monthlyCalendarOverrides[dt] = {
+            date: dt,
+            dayNameHindi: hindiDayNames[dayOfWeek] || 'सोमवार',
+            specialCurry: template.specialCurry,
+            specialRice: template.specialRice,
+            specialBread: template.specialBread,
+            lunchDishes: JSON.parse(JSON.stringify(template.lunchDishes || [])),
+            dinnerDishes: JSON.parse(JSON.stringify(template.dinnerDishes || [])),
+            isCustomOverride: true,
+            notes: notes || `Template ${template.dayNameHindi} applied by Owner`
+          };
+        }
+      } else {
+        // Apply custom dishes & highlights to selected dates
+        for (const dt of dates) {
+          const parts = dt.split('-');
+          const dateObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+          const dayOfWeek = dayNames[dateObj.getDay()] || 'monday';
+          const existing = vault.dailyMenuConfig.monthlyCalendarOverrides[dt] || {
+            date: dt,
+            dayNameHindi: hindiDayNames[dayOfWeek] || 'सोमवार',
+            lunchDishes: [],
+            dinnerDishes: []
+          };
+
+          if (specialCurry !== undefined) existing.specialCurry = String(specialCurry).trim();
+          if (specialRice !== undefined) existing.specialRice = String(specialRice).trim();
+          if (specialBread !== undefined) existing.specialBread = String(specialBread).trim();
+          if (Array.isArray(lunchDishes)) existing.lunchDishes = lunchDishes;
+          if (Array.isArray(dinnerDishes)) existing.dinnerDishes = dinnerDishes;
+          existing.isCustomOverride = true;
+          if (notes) existing.notes = String(notes).trim();
+
+          vault.dailyMenuConfig.monthlyCalendarOverrides[dt] = existing;
+        }
+      }
+
+      if (Array.isArray(regularFixedDishes) && regularFixedDishes.length > 0) {
+        vault.dailyMenuConfig.regularFixedDishes = regularFixedDishes;
+      }
+
+      vault.dailyMenuConfig.lastUpdated = new Date().toISOString();
+      saveVendorVault(vault);
+
+      res.json({
+        success: true,
+        updatedDatesCount: dates.length,
+        dailyMenuConfig: vault.dailyMenuConfig,
+        message: `${dates.length} तारीखों पर दैनिक व फिक्स मेनू सफलता से बल्क अपडेट व सहेजा गया!`
+      });
+    } catch (err: any) {
+      console.error('[Bulk Update Calendar Error]:', err);
+      res.status(500).json({ success: false, message: 'बल्क कैलेंडर अपडेट करने में त्रुटि।' });
+    }
+  });
+
+  app.post('/api/owner/daily-menu/update-day', (req, res) => {
+    try {
+      const { dayId, specialCurry, specialRice, specialBread, lunchDishes, dinnerDishes } = req.body || {};
+      if (!dayId) {
+        return res.status(400).json({ success: false, message: 'Day ID (monday, tuesday, etc.) अनिवार्य है।' });
+      }
+
+      const vault = loadVendorVault();
+      if (!vault.dailyMenuConfig) vault.dailyMenuConfig = JSON.parse(JSON.stringify(DEFAULT_DAILY_MENU_CONFIG));
+
+      const existingDay = vault.dailyMenuConfig.dayWiseSchedules[dayId];
+      if (!existingDay) {
+        return res.status(404).json({ success: false, message: `दिन ${dayId} का शेड्यूल नहीं मिला।` });
+      }
+
+      if (specialCurry !== undefined) existingDay.specialCurry = String(specialCurry).trim();
+      if (specialRice !== undefined) existingDay.specialRice = String(specialRice).trim();
+      if (specialBread !== undefined) existingDay.specialBread = String(specialBread).trim();
+      if (Array.isArray(lunchDishes)) existingDay.lunchDishes = lunchDishes;
+      if (Array.isArray(dinnerDishes)) existingDay.dinnerDishes = dinnerDishes;
+
+      vault.dailyMenuConfig.lastUpdated = new Date().toISOString();
+      saveVendorVault(vault);
+
+      res.json({
+        success: true,
+        updatedDay: existingDay,
+        dailyMenuConfig: vault.dailyMenuConfig,
+        message: `${existingDay.dayNameHindi} का मेनू शेड्यूल मालिक (देवी) द्वारा अपडेट व सहेजा गया!`
+      });
+    } catch (err: any) {
+      console.error('[Update Day Menu Error]:', err);
+      res.status(500).json({ success: false, message: 'दिन का मेनू अपडेट करने में त्रुटि।' });
+    }
+  });
+
+  app.post('/api/owner/daily-menu/add-dish', (req, res) => {
+    try {
+      const { target, dayId, mealSlot, dishId, name, hindiName, listingPrice, vendorPayoutRate } = req.body || {};
+      if (!dishId || !name) {
+        return res.status(400).json({ success: false, message: 'Dish ID और नाम अनिवार्य हैं।' });
+      }
+
+      const vault = loadVendorVault();
+      if (!vault.dailyMenuConfig) vault.dailyMenuConfig = JSON.parse(JSON.stringify(DEFAULT_DAILY_MENU_CONFIG));
+
+      const newDish: DailyMenuItem = {
+        dishId: String(dishId).trim(),
+        name: String(name).trim(),
+        hindiName: String(hindiName || name).trim(),
+        listingPrice: Math.max(1, Number(listingPrice || 99)),
+        vendorPayoutRate: Math.max(1, Number(vendorPayoutRate || 40)),
+        mealSlot: (mealSlot || 'all_day') as any,
+        isFixedDaily: target === 'regular_fixed'
+      };
+
+      if (target === 'regular_fixed') {
+        // Add to regular fixed menu
+        const exists = vault.dailyMenuConfig.regularFixedDishes.some(d => d.dishId === newDish.dishId);
+        if (!exists) {
+          vault.dailyMenuConfig.regularFixedDishes.push(newDish);
+        }
+      } else if (dayId && vault.dailyMenuConfig.dayWiseSchedules[dayId]) {
+        const dayObj = vault.dailyMenuConfig.dayWiseSchedules[dayId];
+        if (mealSlot === 'dinner') {
+          dayObj.dinnerDishes.push(newDish);
+        } else {
+          dayObj.lunchDishes.push(newDish);
+        }
+      }
+
+      vault.dailyMenuConfig.lastUpdated = new Date().toISOString();
+      saveVendorVault(vault);
+
+      res.json({
+        success: true,
+        dailyMenuConfig: vault.dailyMenuConfig,
+        message: `डिश "${newDish.name}" सफलता से मेनू शेड्यूल में जोड़ दी गई!`
+      });
+    } catch (err: any) {
+      console.error('[Add Daily Menu Dish Error]:', err);
+      res.status(500).json({ success: false, message: 'डिश जोड़ने में त्रुटि।' });
+    }
+  });
+
+  app.post('/api/owner/daily-menu/remove-dish', (req, res) => {
+    try {
+      const { target, dayId, mealSlot, dishId } = req.body || {};
+      if (!dishId) {
+        return res.status(400).json({ success: false, message: 'Dish ID आवश्यक है।' });
+      }
+
+      const vault = loadVendorVault();
+      if (!vault.dailyMenuConfig) vault.dailyMenuConfig = JSON.parse(JSON.stringify(DEFAULT_DAILY_MENU_CONFIG));
+
+      if (target === 'regular_fixed') {
+        vault.dailyMenuConfig.regularFixedDishes = vault.dailyMenuConfig.regularFixedDishes.filter(d => d.dishId !== dishId);
+      } else if (dayId && vault.dailyMenuConfig.dayWiseSchedules[dayId]) {
+        const dayObj = vault.dailyMenuConfig.dayWiseSchedules[dayId];
+        if (mealSlot === 'dinner') {
+          dayObj.dinnerDishes = dayObj.dinnerDishes.filter(d => d.dishId !== dishId);
+        } else {
+          dayObj.lunchDishes = dayObj.lunchDishes.filter(d => d.dishId !== dishId);
+        }
+      }
+
+      vault.dailyMenuConfig.lastUpdated = new Date().toISOString();
+      saveVendorVault(vault);
+
+      res.json({
+        success: true,
+        dailyMenuConfig: vault.dailyMenuConfig,
+        message: 'डिश सफलतापूर्वक मेनू शेड्यूल से हटा दी गई!'
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: 'डिश हटाने में त्रुटि।' });
+    }
+  });
+
+  app.post('/api/owner/daily-menu/reset', (_req, res) => {
+    try {
+      const vault = loadVendorVault();
+      vault.dailyMenuConfig = JSON.parse(JSON.stringify(DEFAULT_DAILY_MENU_CONFIG));
+      saveVendorVault(vault);
+      res.json({
+        success: true,
+        dailyMenuConfig: vault.dailyMenuConfig,
+        message: 'दैनिक व फिक्स मेनू शेड्यूल डिफ़ॉल्ट अधिकृत सूची पर रीसेट हो गया!'
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: 'मेनू रीसेट करने में त्रुटि।' });
+    }
+  });
+
+  // 10b. Vendor & Owner Incentive APIs
+  app.get('/api/vendor/incentives/overview', (_req, res) => {
+    try {
+      const vault = loadVendorVault();
+      const stats = calculateVendorWeeklyIncentiveStats(vault);
+      res.json({
+        success: true,
+        stats,
+        config: vault.incentiveConfig || DEFAULT_INCENTIVE_CONFIG,
+        history: (vault.incentiveHistory || []).slice(0, 50)
+      });
+    } catch (err: any) {
+      console.error('[Incentive Overview Error]:', err);
+      res.status(500).json({ success: false, message: 'इंसेंटिव डेटा लोड करने में त्रुटि।' });
+    }
+  });
+
+  // Owner 1-Click Spot Incentive Grant
+  app.post('/api/owner/incentives/grant-spot', (req, res) => {
+    try {
+      const { vendorId, amount, reason } = req.body || {};
+      const numAmount = Number(amount);
+      if (!numAmount || numAmount <= 0) {
+        return res.status(400).json({ success: false, message: 'मान्य इंसेंटिव राशि दर्ज करें।' });
+      }
+      if (!reason) {
+        return res.status(400).json({ success: false, message: 'इंसेंटिव का कारण आवश्यक है।' });
+      }
+
+      const vault = loadVendorVault();
+      if (!vault.incentiveHistory) vault.incentiveHistory = [];
+
+      // Credit to vendor wallet directly
+      vault.wallet.currentBalance += numAmount;
+      vault.wallet.totalLifetimeEarned += numAmount;
+
+      const record: IncentiveRecord = {
+        id: `inc_${Date.now()}`,
+        vendorId: String(vendorId || 'NIR8800').trim(),
+        type: 'spot_bonus',
+        amount: numAmount,
+        reason: String(reason).trim(),
+        grantedBy: 'Owner Operations Desk',
+        grantedAt: new Date().toISOString(),
+        cyclePeriod: 'Current Week'
+      };
+
+      vault.incentiveHistory.unshift(record);
+
+      const txn: VendorWalletTransaction = {
+        id: `txn_inc_${Date.now()}`,
+        date: new Date().toISOString().split('T')[0],
+        type: 'incentive_bonus',
+        amount: numAmount,
+        description: `🎯 स्पॉट इंसेंटिव बोनस: ${record.reason}`,
+        referenceId: record.id,
+        balanceAfter: vault.wallet.currentBalance,
+        status: 'settled',
+        ownerApprovedBy: 'Owner Operations Desk',
+        cyclePeriod: 'Incentive Reward'
+      };
+
+      vault.transactions.unshift(txn);
+      saveVendorVault(vault);
+
+      const stats = calculateVendorWeeklyIncentiveStats(vault);
+
+      res.json({
+        success: true,
+        record,
+        newBalance: vault.wallet.currentBalance,
+        stats,
+        message: `₹${numAmount} का इंसेंटिव बोनस वेंडर के वॉलेट में क्रेडिट हो गया! (नया बैलेंस: ₹${vault.wallet.currentBalance})`
+      });
+    } catch (err: any) {
+      console.error('[Grant Spot Incentive Error]:', err);
+      res.status(500).json({ success: false, message: 'इंसेंटिव क्रेडिट करने में त्रुटि।' });
+    }
+  });
+
+  // Owner Process Weekly Milestone Incentives
+  app.post('/api/owner/incentives/process-milestones', (_req, res) => {
+    try {
+      const vault = loadVendorVault();
+      if (!vault.incentiveHistory) vault.incentiveHistory = [];
+      const stats = calculateVendorWeeklyIncentiveStats(vault);
+      const config = vault.incentiveConfig || DEFAULT_INCENTIVE_CONFIG;
+
+      if (!config.enabled) {
+        return res.status(400).json({ success: false, message: 'इंसेंटिव सिस्टम वर्तमान में बंद (Disabled) है।' });
+      }
+
+      const tiers = [...(config.tiers || [])].sort((a, b) => a.milestoneMeals - b.milestoneMeals);
+      const awarded: IncentiveRecord[] = [];
+
+      // Check which tiers were achieved this cycle and not yet awarded
+      const now = new Date();
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const recentMilestoneAwards = vault.incentiveHistory.filter(h => 
+        h.type === 'milestone' && 
+        new Date(h.grantedAt) >= sevenDaysAgo
+      );
+      const awardedTierIds = new Set(recentMilestoneAwards.map(h => h.tierId).filter(Boolean));
+
+      for (const tier of tiers) {
+        if (stats.deliveredMealsThisCycle >= tier.milestoneMeals && !awardedTierIds.has(tier.id)) {
+          // Award this tier!
+          vault.wallet.currentBalance += tier.bonusAmount;
+          vault.wallet.totalLifetimeEarned += tier.bonusAmount;
+
+          const record: IncentiveRecord = {
+            id: `inc_m_${tier.id}_${Date.now()}`,
+            vendorId: vault.vendorId || 'NIR8800',
+            type: 'milestone',
+            amount: tier.bonusAmount,
+            mealsCompleted: stats.deliveredMealsThisCycle,
+            tierId: tier.id,
+            reason: `साप्ताहिक माइलस्टोन रिवॉर्ड: ${tier.title} (${tier.milestoneMeals}+ टिफिन पूरे)`,
+            grantedBy: 'Automated Milestone Engine (Owner Verified)',
+            grantedAt: new Date().toISOString(),
+            cyclePeriod: `${stats.cycleStart} to ${stats.cycleEnd}`
+          };
+
+          vault.incentiveHistory.unshift(record);
+
+          vault.transactions.unshift({
+            id: `txn_m_inc_${Date.now()}_${tier.id}`,
+            date: new Date().toISOString().split('T')[0],
+            type: 'incentive_bonus',
+            amount: tier.bonusAmount,
+            description: `🎯 माइलस्टोन इंसेंटिव: ${tier.title} (${tier.milestoneMeals}+ मील टारगेट)`,
+            referenceId: record.id,
+            balanceAfter: vault.wallet.currentBalance,
+            status: 'settled',
+            ownerApprovedBy: 'System Milestone Engine',
+            cyclePeriod: 'Weekly Milestone Reward'
+          });
+
+          awarded.push(record);
+        }
+      }
+
+      saveVendorVault(vault);
+      const updatedStats = calculateVendorWeeklyIncentiveStats(vault);
+
+      if (awarded.length === 0) {
+        return res.json({
+          success: true,
+          awardedCount: 0,
+          stats: updatedStats,
+          message: `इस हफ़्ते के सभी योग्य माइलस्टोन इंसेंटिव पहले ही वितरित किए जा चुके हैं या लक्ष्य अभी तक पूरा नहीं हुआ। वर्तमान डिलीवरी: ${stats.deliveredMealsThisCycle} टिफिन।`
+        });
+      }
+
+      res.json({
+        success: true,
+        awardedCount: awarded.length,
+        awarded,
+        stats: updatedStats,
+        newBalance: vault.wallet.currentBalance,
+        message: `${awarded.length} नए माइलस्टोन इंसेंटिव वेंडर वॉलेट में क्रेडिट किए गए! कुल राशि: ₹${awarded.reduce((s, a) => s + a.amount, 0)}`
+      });
+    } catch (err: any) {
+      console.error('[Process Milestones Error]:', err);
+      res.status(500).json({ success: false, message: 'माइलस्टोन प्रोसेस करने में त्रुटि।' });
+    }
+  });
+
+  // Owner Update Incentive Rules Config
+  app.post('/api/owner/incentives/update-config', (req, res) => {
+    try {
+      const { enabled, tiers, onTimeBonusPerMeal, zeroComplaintWeeklyBonus, dailyZeroCancellationBonus, weeklyHundredPercentOnlineBonus } = req.body || {};
+      const vault = loadVendorVault();
+
+      vault.incentiveConfig = {
+        enabled: enabled !== false,
+        tiers: Array.isArray(tiers) && tiers.length > 0 ? tiers : (vault.incentiveConfig?.tiers || DEFAULT_INCENTIVE_CONFIG.tiers),
+        onTimeBonusPerMeal: Number(onTimeBonusPerMeal ?? 5),
+        zeroComplaintWeeklyBonus: Number(zeroComplaintWeeklyBonus ?? 250),
+        dailyZeroCancellationBonus: Number(dailyZeroCancellationBonus ?? 50),
+        weeklyHundredPercentOnlineBonus: Number(weeklyHundredPercentOnlineBonus ?? 300)
+      };
+
+      saveVendorVault(vault);
+      res.json({
+        success: true,
+        config: vault.incentiveConfig,
+        message: 'इंसेंटिव रूल्स सफलतापूर्वक अपडेट व सुरक्षित हो गए!'
+      });
+    } catch (err: any) {
+      console.error('[Update Incentive Config Error]:', err);
+      res.status(500).json({ success: false, message: 'इंसेंटिव कॉन्फ़िगरेशन अपडेट करने में त्रुटि।' });
+    }
+  });
+
+  // Owner Delete / Revoke Granted Incentive Record
+  app.post('/api/owner/incentives/delete-granted', (req, res) => {
+    try {
+      const { recordId } = req.body || {};
+      if (!recordId) {
+        return res.status(400).json({ success: false, message: 'Record ID आवश्यक है।' });
+      }
+
+      const vault = loadVendorVault();
+      if (!vault.incentiveHistory) vault.incentiveHistory = [];
+
+      const index = vault.incentiveHistory.findIndex(h => h.id === recordId);
+      if (index === -1) {
+        return res.status(404).json({ success: false, message: 'इंसेंटिव रिकॉर्ड नहीं मिला।' });
+      }
+
+      const record = vault.incentiveHistory[index];
+      const amount = record.amount || 0;
+      vault.wallet.currentBalance = Math.max(0, vault.wallet.currentBalance - amount);
+      vault.wallet.totalLifetimeEarned = Math.max(0, vault.wallet.totalLifetimeEarned - amount);
+
+      vault.incentiveHistory.splice(index, 1);
+
+      if (vault.transactions) {
+        vault.transactions = vault.transactions.filter(t => t.referenceId !== recordId && t.id !== `txn_${recordId}`);
+      }
+
+      saveVendorVault(vault);
+      const stats = calculateVendorWeeklyIncentiveStats(vault);
+
+      res.json({
+        success: true,
+        stats,
+        newBalance: vault.wallet.currentBalance,
+        message: `इंसेंटिव रिकॉर्ड #${recordId} सफलतापूर्वक हटा दिया गया (₹${amount} वॉलेट से रिवर्स किया गया)।`
+      });
+    } catch (err: any) {
+      console.error('[Delete Granted Incentive Error]:', err);
+      res.status(500).json({ success: false, message: 'इंसेंटिव रिकॉर्ड हटाने में त्रुटि।' });
+    }
+  });
+
+  // Owner Clear All Incentive History
+  app.post('/api/owner/incentives/clear-history', (_req, res) => {
+    try {
+      const vault = loadVendorVault();
+      vault.incentiveHistory = [];
+      saveVendorVault(vault);
+      const stats = calculateVendorWeeklyIncentiveStats(vault);
+      res.json({
+        success: true,
+        stats,
+        message: 'सभी इंसेंटिव हिस्ट्री सफलतापूर्वक रिसेट कर दी गई!'
+      });
+    } catch (err: any) {
+      console.error('[Clear Incentive History Error]:', err);
+      res.status(500).json({ success: false, message: 'इंसेंटिव हिस्ट्री रिसेट करने में त्रुटि।' });
     }
   });
 
@@ -1109,9 +2299,25 @@ export function registerVendorRoutes(app: express.Express, authenticateStaffOrOw
     }
   });
 
+  app.post('/api/owner/vendor/rate-card/reset-to-master', (_req, res) => {
+    try {
+      saveRateCardToCSV(VENDOR_MASTER_RATE_CARD);
+      const updated = loadDynamicRateCard();
+      res.json({
+        success: true,
+        count: updated.length,
+        rateCard: updated,
+        message: `मास्टर रेट कार्ड सफलतापूर्वक रीसेट हो गया! कुल ${updated.length} अधिकृत डिशेज़ व कॉम्बो लोड हो गए हैं।`
+      });
+    } catch (err: any) {
+      console.error('[Reset Rate Card Error]:', err);
+      res.status(500).json({ success: false, message: 'मास्टर रेट कार्ड रीसेट करने में त्रुटि।' });
+    }
+  });
+
   app.post('/api/owner/vendor/dishes/review', (req, res) => {
     try {
-      const { dishId, action, notes } = req.body || {};
+      const { dishId, action, notes, customPortions } = req.body || {};
       if (!dishId || !action) {
         return res.status(400).json({ success: false, message: 'Dish ID और Action (APPROVE / REJECT) अनिवार्य हैं।' });
       }
@@ -1125,7 +2331,15 @@ export function registerVendorRoutes(app: express.Express, authenticateStaffOrOw
       if (action.toUpperCase() === 'APPROVE') {
         dish.status = 'APPROVED';
         dish.approvedAt = new Date().toISOString();
-        dish.notes = notes || 'मालिक द्वारा अनुमोदित (Approved by Owner)';
+        dish.notes = notes || 'मालिक (देवी) द्वारा अनुमोदित (Approved by Owner)';
+
+        if (customPortions && Array.isArray(customPortions) && customPortions.length > 0) {
+          dish.portions = customPortions.map((p: any) => ({
+            size: String(p.size || 'Standard'),
+            listingPrice: Math.max(1, Number(p.listingPrice || 99)),
+            vendorPayoutRate: Math.max(1, Number(p.vendorPayoutRate || 40))
+          }));
+        }
 
         // Automatically append to master CSV rate card so it is immediately live for punching!
         addRateCardItemToCSV({
@@ -1146,7 +2360,7 @@ export function registerVendorRoutes(app: express.Express, authenticateStaffOrOw
         });
       } else {
         dish.status = 'REJECTED';
-        dish.notes = notes || 'मालिक द्वारा अस्वीकृत (Rejected)';
+        dish.notes = notes || 'मालिक (देवी) द्वारा अस्वीकृत (Rejected)';
         saveVendorVault(vault);
         return res.json({
           success: true,
@@ -1371,12 +2585,19 @@ export function registerVendorRoutes(app: express.Express, authenticateStaffOrOw
         });
       } else {
         order.verificationStatus = 'REJECTED';
-        order.notes = (order.notes ? order.notes + ' | ' : '') + `मालिक द्वारा अस्वीकृत: ${notes || 'अमान्य आर्डर'}`;
+        order.status = 'cancelled';
+        order.payoutCreditedToWallet = false;
+        order.totalVendorPayout = 0;
+        const reasonStr = notes || 'भोजन गुणवत्ता / अमान्य बिल समस्या (मालिक देवी द्वारा अस्वीकृत)';
+        (order as any).rejectionReason = reasonStr;
+        (order as any).rejectedAt = new Date().toISOString();
+        order.notes = (order.notes ? order.notes + ' | ' : '') + `मालिक (देवी) द्वारा अस्वीकृत: ${reasonStr}`;
+        
         saveVendorVault(vault);
         return res.json({
           success: true,
           order,
-          message: `ऑर्डर #${order.orderNumber} अस्वीकृत किया गया (वॉलेट में क्रेडिट नहीं हुआ)।`
+          message: `ऑर्डर #${order.orderNumber} ओनर (देवी) द्वारा अस्वीकृत किया गया (वेंडर को 0 पेआउट)।`
         });
       }
     } catch (err: any) {

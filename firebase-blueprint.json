@@ -152,9 +152,24 @@
         "deletedAt": { "type": "string" }
       },
       "required": ["id", "staffId"]
+    },
+    "AppSnapshot": {
+      "title": "AppSnapshot",
+      "description": "Permanent cloud database snapshot backup",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "data": { "type": "object" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "updatedAt"]
     }
   },
   "firestore": {
+    "/app_snapshots/{snapId}": {
+      "schema": "AppSnapshot",
+      "description": "Permanent database snapshot backups"
+    },
     "/customers/{customerId}": {
       "schema": "Customer",
       "description": "Customer accounts and delivery profiles"

@@ -194,6 +194,55 @@
     "assignedHelperNames": []
   },
   {
+    "id": "NIR8800",
+    "name": "NIR Cloud Kitchen Partner",
+    "hindiName": "NIR क्लाउड किचन वेंडर पार्टनर",
+    "email": "nir8800@tiffinmate.com",
+    "phone": "+91 9118409672",
+    "role": "vendor",
+    "userIds": [
+      "nir8800",
+      "NIR8800",
+      "8800",
+      "nir"
+    ],
+    "passwords": [
+      "Nir12388001",
+      "nir12388001"
+    ],
+    "accessPin": "8800",
+    "shift": "All Day Cloud Kitchen (7 AM - 11 PM)",
+    "zone": "Central Cloud Kitchen Sector 22",
+    "specialization": "Pure Desi Ghee Thalis, Zomato/Swiggy 3P & Tiffin Production",
+    "status": "active",
+    "activeStatus": "active",
+    "assignedScopes": [
+      "orders",
+      "rate_card",
+      "wallet",
+      "inventory",
+      "profile"
+    ],
+    "companyName": "NIR Cloud Kitchen & Food Production Hub",
+    "contactPerson": "Kitchen Operations Head",
+    "gstin": "07AAACN8800F1ZV",
+    "upiId": "nir8800@upi",
+    "bankDetails": {
+      "accountNumber": "919118409672",
+      "ifsc": "PYTM0123456",
+      "bankName": "Paytm Payments Bank / HDFC"
+    },
+    "wallet": {
+      "balance": 5480,
+      "reserveAmount": 2000,
+      "tenDayHoldAmount": 1850,
+      "eligibleMondayPayout": 1630,
+      "lastSettlementDate": "2026-10-19",
+      "billingCycle": "Friday to Thursday",
+      "payoutDay": "Monday"
+    }
+  },
+  {
     "id": "I",
     "name": "Devi Prasad Inventory",
     "hindiName": "देवी प्रसाद (इन्वेंट्री स्टोरकीपर)",
@@ -270,54 +319,5 @@
     "assignedCookName": "Devi Prasad Cook",
     "assignedManagerId": "DeviM",
     "assignedManagerName": "Devi Prasad"
-  },
-  {
-    "id": "NIR8800",
-    "name": "NIR Cloud Kitchen Partner",
-    "hindiName": "NIR क्लाउड किचन वेंडर पार्टनर",
-    "email": "nir8800@tiffinmate.com",
-    "phone": "+91 9118409672",
-    "role": "vendor",
-    "userIds": [
-      "nir8800",
-      "NIR8800",
-      "8800",
-      "nir"
-    ],
-    "passwords": [
-      "Nir12388001",
-      "nir12388001"
-    ],
-    "accessPin": "8800",
-    "shift": "All Day Cloud Kitchen (7 AM - 11 PM)",
-    "zone": "Central Cloud Kitchen Sector 22",
-    "specialization": "Pure Desi Ghee Thalis, Zomato/Swiggy 3P & Tiffin Production",
-    "status": "active",
-    "activeStatus": "active",
-    "companyName": "NIR Cloud Kitchen & Food Production Hub",
-    "contactPerson": "Kitchen Operations Head",
-    "gstin": "07AAACN8800F1ZV",
-    "upiId": "nir8800@upi",
-    "bankDetails": {
-      "accountNumber": "919118409672",
-      "ifsc": "PYTM0123456",
-      "bankName": "Paytm Payments Bank / HDFC"
-    },
-    "wallet": {
-      "balance": 5480,
-      "reserveAmount": 2000,
-      "tenDayHoldAmount": 1850,
-      "eligibleMondayPayout": 1630,
-      "lastSettlementDate": "2026-10-19",
-      "billingCycle": "Friday to Thursday",
-      "payoutDay": "Monday"
-    },
-    "assignedScopes": [
-      "orders",
-      "rate_card",
-      "wallet",
-      "inventory",
-      "profile"
-    ]
   }
 ]

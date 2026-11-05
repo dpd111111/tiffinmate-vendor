@@ -5,9 +5,12 @@
  * Authoritative digitized rate card as per official document:
  * Kitchen Menu & Vendor Settlement Rate Card (Navovia Next / NOV TIFFIN)
  * 
- * Rules:
- * - 3P Listing Rate (Zomato / Swiggy) vs Vendor Payout Settlement Rate
- * - Strict server-side verification: Vendor cannot alter rates
+ * Includes:
+ * 1. Monday to Sunday Daily Curries, Rice Bowls & Thalis
+ * 2. Special Daily Thalis (Veg Biryani Thali, No Onion Garlic Desi Ghee Thali)
+ * 3. Breakfast, Snacks & Complete Paratha + Chai Combos
+ * 4. Vrat Thali & Vrat Snacks
+ * 5. Breads, Rice & Desserts (Sweets)
  */
 
 export interface VendorRateItem {
@@ -17,7 +20,7 @@ export interface VendorRateItem {
   category: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday' | 'special_thali' | 'breakfast_snacks' | 'vrat_special' | 'breads_desserts';
   categoryLabel: string;
   portions: Array<{
-    size: 'Quarter' | 'Half' | 'Full' | 'Standard' | 'Per Pc' | '250g' | '300g' | '500g' | '700g';
+    size: 'Quarter' | 'Half' | 'Full' | 'Standard' | 'Per Pc' | 'Plain Tawa Roti' | 'Butter Tawa Roti' | 'Plain Rice (300g)' | 'Jeera Rice (300g)' | '250g' | '300g' | '500g' | '700g' | '2 Cup' | '4 Cup' | '5 Cup Flask' | string;
     listingPrice: number;     // Customer / Zomato price
     vendorPayoutRate: number; // Settlement amount paid to vendor
   }>;
@@ -26,7 +29,9 @@ export interface VendorRateItem {
 }
 
 export const VENDOR_MASTER_RATE_CARD: VendorRateItem[] = [
-  // --- MONDAY ---
+  // =========================================================================
+  // 1. सोमवार का मेनू (MONDAY MENU)
+  // =========================================================================
   {
     id: 'mon_aloo_matar',
     name: 'Aloo Matar',
@@ -111,9 +116,7 @@ export const VENDOR_MASTER_RATE_CARD: VendorRateItem[] = [
     hindiName: 'सोमवार डेली थाली',
     category: 'monday',
     categoryLabel: 'सोमवार का मेनू',
-    portions: [
-      { size: 'Standard', listingPrice: 249, vendorPayoutRate: 80 }
-    ],
+    portions: [{ size: 'Standard', listingPrice: 249, vendorPayoutRate: 80 }],
     inStock: true
   },
   {
@@ -122,9 +125,7 @@ export const VENDOR_MASTER_RATE_CARD: VendorRateItem[] = [
     hindiName: 'सोमवार डीलक्स थाली',
     category: 'monday',
     categoryLabel: 'सोमवार का मेनू',
-    portions: [
-      { size: 'Standard', listingPrice: 299, vendorPayoutRate: 100 }
-    ],
+    portions: [{ size: 'Standard', listingPrice: 299, vendorPayoutRate: 100 }],
     inStock: true
   },
   {
@@ -133,13 +134,13 @@ export const VENDOR_MASTER_RATE_CARD: VendorRateItem[] = [
     hindiName: 'सोमवार प्रीमियम थाली',
     category: 'monday',
     categoryLabel: 'सोमवार का मेनू',
-    portions: [
-      { size: 'Standard', listingPrice: 399, vendorPayoutRate: 135 }
-    ],
+    portions: [{ size: 'Standard', listingPrice: 399, vendorPayoutRate: 135 }],
     inStock: true
   },
 
-  // --- TUESDAY ---
+  // =========================================================================
+  // 2. मंगलवार का मेनू (TUESDAY MENU)
+  // =========================================================================
   {
     id: 'tue_bhindi_masala',
     name: 'Bhindi Masala',
@@ -233,9 +234,11 @@ export const VENDOR_MASTER_RATE_CARD: VendorRateItem[] = [
     inStock: true
   },
 
-  // --- WEDNESDAY ---
+  // =========================================================================
+  // 3. बुधवार का मेनू (WEDNESDAY MENU)
+  // =========================================================================
   {
-    id: 'wed_lauki_kofta',
+    id: 'wed_lauki_kofta_dum_aloo',
     name: 'Lauki Kofta / Dum Aloo',
     hindiName: 'लौकी कोफ्ता / दम आलू',
     category: 'wednesday',
@@ -274,6 +277,32 @@ export const VENDOR_MASTER_RATE_CARD: VendorRateItem[] = [
     inStock: true
   },
   {
+    id: 'wed_paneer_do_pyaza_rice_bowl',
+    name: 'Paneer Do Pyaza with Rice Bowl',
+    hindiName: 'पनीर दो प्याज़ा विथ राइस बाउल',
+    category: 'wednesday',
+    categoryLabel: 'बुधवार का मेनू',
+    portions: [
+      { size: 'Quarter', listingPrice: 199, vendorPayoutRate: 75 },
+      { size: 'Half', listingPrice: 299, vendorPayoutRate: 115 },
+      { size: 'Full', listingPrice: 399, vendorPayoutRate: 150 }
+    ],
+    inStock: true
+  },
+  {
+    id: 'wed_moong_dal_rice_bowl',
+    name: 'Moong Dal with Rice Bowl',
+    hindiName: 'मूंग दाल विथ राइस बाउल',
+    category: 'wednesday',
+    categoryLabel: 'बुधवार का मेनू',
+    portions: [
+      { size: 'Quarter', listingPrice: 169, vendorPayoutRate: 60 },
+      { size: 'Half', listingPrice: 229, vendorPayoutRate: 85 },
+      { size: 'Full', listingPrice: 319, vendorPayoutRate: 120 }
+    ],
+    inStock: true
+  },
+  {
     id: 'wed_daily_thali',
     name: 'Wednesday Daily Thali',
     hindiName: 'बुधवार डेली थाली',
@@ -301,7 +330,9 @@ export const VENDOR_MASTER_RATE_CARD: VendorRateItem[] = [
     inStock: true
   },
 
-  // --- THURSDAY ---
+  // =========================================================================
+  // 4. गुरुवार का मेनू (THURSDAY MENU)
+  // =========================================================================
   {
     id: 'thu_kadhi_pakoda',
     name: 'Kadhi Pakoda',
@@ -342,6 +373,32 @@ export const VENDOR_MASTER_RATE_CARD: VendorRateItem[] = [
     inStock: true
   },
   {
+    id: 'thu_kadhi_pakoda_rice_bowl',
+    name: 'Kadhi Pakoda with Rice Bowl',
+    hindiName: 'कढ़ी पकोड़ा विथ राइस बाउल',
+    category: 'thursday',
+    categoryLabel: 'गुरुवार का मेनू',
+    portions: [
+      { size: 'Quarter', listingPrice: 169, vendorPayoutRate: 60 },
+      { size: 'Half', listingPrice: 239, vendorPayoutRate: 85 },
+      { size: 'Full', listingPrice: 329, vendorPayoutRate: 125 }
+    ],
+    inStock: true
+  },
+  {
+    id: 'thu_palak_paneer_rice_bowl',
+    name: 'Palak Paneer with Rice Bowl',
+    hindiName: 'पालक पनीर विथ राइस बाउल',
+    category: 'thursday',
+    categoryLabel: 'गुरुवार का मेनू',
+    portions: [
+      { size: 'Quarter', listingPrice: 199, vendorPayoutRate: 75 },
+      { size: 'Half', listingPrice: 299, vendorPayoutRate: 115 },
+      { size: 'Full', listingPrice: 399, vendorPayoutRate: 150 }
+    ],
+    inStock: true
+  },
+  {
     id: 'thu_daily_thali',
     name: 'Thursday Daily Thali',
     hindiName: 'गुरुवार डेली थाली',
@@ -369,11 +426,13 @@ export const VENDOR_MASTER_RATE_CARD: VendorRateItem[] = [
     inStock: true
   },
 
-  // --- FRIDAY ---
+  // =========================================================================
+  // 5. शुक्रवार का मेनू (FRIDAY MENU)
+  // =========================================================================
   {
     id: 'fri_baingan_bharta',
-    name: 'Baingan Bharta',
-    hindiName: 'बैंगन भरता',
+    name: 'Baingan bharta',
+    hindiName: 'बैंगन भर्ता',
     category: 'friday',
     categoryLabel: 'शुक्रवार का मेनू',
     portions: [
@@ -385,7 +444,7 @@ export const VENDOR_MASTER_RATE_CARD: VendorRateItem[] = [
   },
   {
     id: 'fri_butter_dal_fry',
-    name: 'Butter Dal Fry',
+    name: 'Butter dal fry',
     hindiName: 'बटर दाल फ्राई',
     category: 'friday',
     categoryLabel: 'शुक्रवार का मेनू',
@@ -398,7 +457,7 @@ export const VENDOR_MASTER_RATE_CARD: VendorRateItem[] = [
   },
   {
     id: 'fri_paneer_bhurji',
-    name: 'Paneer Bhurji',
+    name: 'Paneer bhurji',
     hindiName: 'पनीर भुर्जी',
     category: 'friday',
     categoryLabel: 'शुक्रवार का मेनू',
@@ -406,6 +465,32 @@ export const VENDOR_MASTER_RATE_CARD: VendorRateItem[] = [
       { size: 'Quarter', listingPrice: 199, vendorPayoutRate: 75 },
       { size: 'Half', listingPrice: 299, vendorPayoutRate: 115 },
       { size: 'Full', listingPrice: 399, vendorPayoutRate: 150 }
+    ],
+    inStock: true
+  },
+  {
+    id: 'fri_paneer_bhurji_rice_bowl',
+    name: 'Paneer bhurji with rice bowl',
+    hindiName: 'पनीर भुर्जी विथ राइस बाउल',
+    category: 'friday',
+    categoryLabel: 'शुक्रवार का मेनू',
+    portions: [
+      { size: 'Quarter', listingPrice: 199, vendorPayoutRate: 75 },
+      { size: 'Half', listingPrice: 299, vendorPayoutRate: 115 },
+      { size: 'Full', listingPrice: 399, vendorPayoutRate: 150 }
+    ],
+    inStock: true
+  },
+  {
+    id: 'fri_butter_dal_fry_rice_bowl',
+    name: 'Butter dal fry with rice bowl',
+    hindiName: 'बटर दाल फ्राई विथ राइस बाउल',
+    category: 'friday',
+    categoryLabel: 'शुक्रवार का मेनू',
+    portions: [
+      { size: 'Quarter', listingPrice: 169, vendorPayoutRate: 60 },
+      { size: 'Half', listingPrice: 229, vendorPayoutRate: 85 },
+      { size: 'Full', listingPrice: 319, vendorPayoutRate: 120 }
     ],
     inStock: true
   },
@@ -437,10 +522,12 @@ export const VENDOR_MASTER_RATE_CARD: VendorRateItem[] = [
     inStock: true
   },
 
-  // --- SATURDAY ---
+  // =========================================================================
+  // 6. शनिवार का मेनू (SATURDAY MENU)
+  // =========================================================================
   {
     id: 'sat_aloo_gobi',
-    name: 'Aloo Gobi',
+    name: 'Aloo gobi',
     hindiName: 'आलू गोभी',
     category: 'saturday',
     categoryLabel: 'शनिवार का मेनू',
@@ -452,13 +539,65 @@ export const VENDOR_MASTER_RATE_CARD: VendorRateItem[] = [
     inStock: true
   },
   {
+    id: 'sat_butter_masoor_dal_fry',
+    name: 'Butter masoor dal fry',
+    hindiName: 'बटर मसूर दाल फ्राई',
+    category: 'saturday',
+    categoryLabel: 'शनिवार का मेनू',
+    portions: [
+      { size: 'Quarter', listingPrice: 129, vendorPayoutRate: 50 },
+      { size: 'Half', listingPrice: 199, vendorPayoutRate: 70 },
+      { size: 'Full', listingPrice: 299, vendorPayoutRate: 105 }
+    ],
+    inStock: true
+  },
+  {
     id: 'sat_butter_paneer_masala',
-    name: 'Butter Paneer Masala',
+    name: 'Butter paneer masala',
     hindiName: 'बटर पनीर मसाला',
     category: 'saturday',
     categoryLabel: 'शनिवार का मेनू',
     portions: [
       { size: 'Quarter', listingPrice: 159, vendorPayoutRate: 60 },
+      { size: 'Half', listingPrice: 239, vendorPayoutRate: 90 },
+      { size: 'Full', listingPrice: 329, vendorPayoutRate: 125 }
+    ],
+    inStock: true
+  },
+  {
+    id: 'sat_butter_paneer_masala_rice_bowl',
+    name: 'Butter paneer masala with rice bowl',
+    hindiName: 'बटर पनीर मसाला विथ राइस बाउल',
+    category: 'saturday',
+    categoryLabel: 'शनिवार का मेनू',
+    portions: [
+      { size: 'Quarter', listingPrice: 199, vendorPayoutRate: 75 },
+      { size: 'Half', listingPrice: 299, vendorPayoutRate: 115 },
+      { size: 'Full', listingPrice: 399, vendorPayoutRate: 150 }
+    ],
+    inStock: true
+  },
+  {
+    id: 'sat_butter_masoor_dal_rice_bowl',
+    name: 'Butter masoor dal fry with rice bowl',
+    hindiName: 'बटर मसूर दाल विथ राइस बाउल',
+    category: 'saturday',
+    categoryLabel: 'शनिवार का मेनू',
+    portions: [
+      { size: 'Quarter', listingPrice: 169, vendorPayoutRate: 60 },
+      { size: 'Half', listingPrice: 229, vendorPayoutRate: 85 },
+      { size: 'Full', listingPrice: 319, vendorPayoutRate: 120 }
+    ],
+    inStock: true
+  },
+  {
+    id: 'sat_aloo_gobi_rice_bowl',
+    name: 'Aloo gobi with rice bowl',
+    hindiName: 'आलू गोभी विथ राइस बाउल',
+    category: 'saturday',
+    categoryLabel: 'शनिवार का मेनू',
+    portions: [
+      { size: 'Quarter', listingPrice: 149, vendorPayoutRate: 55 },
       { size: 'Half', listingPrice: 239, vendorPayoutRate: 90 },
       { size: 'Full', listingPrice: 329, vendorPayoutRate: 125 }
     ],
@@ -492,10 +631,12 @@ export const VENDOR_MASTER_RATE_CARD: VendorRateItem[] = [
     inStock: true
   },
 
-  // --- SUNDAY ---
+  // =========================================================================
+  // 7. रविवार का मेनू (SUNDAY MENU)
+  // =========================================================================
   {
     id: 'sun_aloo_jeera',
-    name: 'Aloo Jeera',
+    name: 'Aloo jeera',
     hindiName: 'आलू जीरा',
     category: 'sunday',
     categoryLabel: 'रविवार का मेनू',
@@ -507,13 +648,65 @@ export const VENDOR_MASTER_RATE_CARD: VendorRateItem[] = [
     inStock: true
   },
   {
+    id: 'sun_butter_mix_dal_fry',
+    name: 'Butter mix dal fry',
+    hindiName: 'बटर मिक्स दाल फ्राई',
+    category: 'sunday',
+    categoryLabel: 'रविवार का मेनू',
+    portions: [
+      { size: 'Quarter', listingPrice: 129, vendorPayoutRate: 50 },
+      { size: 'Half', listingPrice: 199, vendorPayoutRate: 75 },
+      { size: 'Full', listingPrice: 299, vendorPayoutRate: 110 }
+    ],
+    inStock: true
+  },
+  {
     id: 'sun_matar_paneer',
-    name: 'Matar Paneer',
+    name: 'Matar paneer',
     hindiName: 'मटर पनीर',
     category: 'sunday',
     categoryLabel: 'रविवार का मेनू',
     portions: [
       { size: 'Quarter', listingPrice: 159, vendorPayoutRate: 60 },
+      { size: 'Half', listingPrice: 239, vendorPayoutRate: 90 },
+      { size: 'Full', listingPrice: 329, vendorPayoutRate: 125 }
+    ],
+    inStock: true
+  },
+  {
+    id: 'sun_matar_paneer_rice_bowl',
+    name: 'Matar paneer with rice bowl',
+    hindiName: 'मटर पनीर विथ राइस बाउल',
+    category: 'sunday',
+    categoryLabel: 'रविवार का मेनू',
+    portions: [
+      { size: 'Quarter', listingPrice: 199, vendorPayoutRate: 75 },
+      { size: 'Half', listingPrice: 299, vendorPayoutRate: 115 },
+      { size: 'Full', listingPrice: 399, vendorPayoutRate: 150 }
+    ],
+    inStock: true
+  },
+  {
+    id: 'sun_butter_mix_dal_rice_bowl',
+    name: 'Butter mix dal fry with rice bowl',
+    hindiName: 'मिक्स दाल फ्राई विथ राइस बाउल',
+    category: 'sunday',
+    categoryLabel: 'रविवार का मेनू',
+    portions: [
+      { size: 'Quarter', listingPrice: 169, vendorPayoutRate: 60 },
+      { size: 'Half', listingPrice: 229, vendorPayoutRate: 85 },
+      { size: 'Full', listingPrice: 319, vendorPayoutRate: 120 }
+    ],
+    inStock: true
+  },
+  {
+    id: 'sun_aloo_jeera_rice_bowl',
+    name: 'Aloo jeera with rice bowl',
+    hindiName: 'आलू जीरा विथ राइस बाउल',
+    category: 'sunday',
+    categoryLabel: 'रविवार का मेनू',
+    portions: [
+      { size: 'Quarter', listingPrice: 149, vendorPayoutRate: 55 },
       { size: 'Half', listingPrice: 239, vendorPayoutRate: 90 },
       { size: 'Full', listingPrice: 329, vendorPayoutRate: 125 }
     ],
@@ -547,7 +740,9 @@ export const VENDOR_MASTER_RATE_CARD: VendorRateItem[] = [
     inStock: true
   },
 
-  // --- SPECIAL DAILY THALIS ---
+  // =========================================================================
+  // 8. विशेष दैनिक थाली (SPECIAL DAILY THALI)
+  // =========================================================================
   {
     id: 'spl_veg_biryani_thali',
     name: 'Veg Biryani Thali (Biryani + Salad)',
@@ -567,7 +762,9 @@ export const VENDOR_MASTER_RATE_CARD: VendorRateItem[] = [
     inStock: true
   },
 
-  // --- BREAKFAST & SNACKS ---
+  // =========================================================================
+  // 9. नाश्ता एवं स्नैक्स (BREAKFAST & SNACKS - OFFICIAL PDF ITEMS)
+  // =========================================================================
   {
     id: 'brk_aloo_paratha',
     name: '2 Aloo Paratha + Raita/Chutney',
@@ -614,9 +811,27 @@ export const VENDOR_MASTER_RATE_CARD: VendorRateItem[] = [
     inStock: true
   },
   {
+    id: 'brk_aloo_chaap',
+    name: 'Aloo Chaap with Sauce (4 Pcs)',
+    hindiName: 'आलू चाप विथ सॉस (4 पीस)',
+    category: 'breakfast_snacks',
+    categoryLabel: 'नाश्ता एवं स्नैक्स',
+    portions: [{ size: 'Standard', listingPrice: 139, vendorPayoutRate: 50 }],
+    inStock: true
+  },
+  {
+    id: 'brk_bread_cutlet',
+    name: 'Bread Cutlet with Sauce (4 Pcs)',
+    hindiName: 'ब्रेड कटलेट विथ सॉस (4 पीस)',
+    category: 'breakfast_snacks',
+    categoryLabel: 'नाश्ता एवं स्नैक्स',
+    portions: [{ size: 'Standard', listingPrice: 139, vendorPayoutRate: 50 }],
+    inStock: true
+  },
+  {
     id: 'brk_veg_sandwich',
     name: 'Veg Sandwich (2 Pc - Plain)',
-    hindiName: 'वेज सैंडविच (2 पीस)',
+    hindiName: 'वेज सैंडविच (2 पीस - प्लेन)',
     category: 'breakfast_snacks',
     categoryLabel: 'नाश्ता एवं स्नैक्स',
     portions: [{ size: 'Standard', listingPrice: 119, vendorPayoutRate: 50 }],
@@ -677,7 +892,170 @@ export const VENDOR_MASTER_RATE_CARD: VendorRateItem[] = [
     inStock: true
   },
 
-  // --- VRAT SPECIAL ---
+  // =========================================================================
+  // 9B. विशेष पराठा व नाश्ता चाय कॉम्बो (PARATHA & ALL BREAKFAST CHAI COMBOS)
+  // =========================================================================
+  {
+    id: 'combo_aloo_paratha_chai',
+    name: '2 Aloo Paratha + Desi Adrak Chai Combo',
+    hindiName: '2 आलू पराठा + देसी अदरक चाय कॉम्बो (बटर व चटनी)',
+    category: 'breakfast_snacks',
+    categoryLabel: 'नाश्ता एवं स्नैक्स',
+    portions: [{ size: 'Standard', listingPrice: 199, vendorPayoutRate: 65 }],
+    inStock: true
+  },
+  {
+    id: 'combo_paneer_paratha_chai',
+    name: '2 Paneer Paratha + Desi Adrak Chai Combo',
+    hindiName: '2 पनीर पराठा + देसी अदरक चाय कॉम्बो (रायता/चटनी)',
+    category: 'breakfast_snacks',
+    categoryLabel: 'नाश्ता एवं स्नैक्स',
+    portions: [{ size: 'Standard', listingPrice: 269, vendorPayoutRate: 85 }],
+    inStock: true
+  },
+  {
+    id: 'combo_gobi_paratha_chai',
+    name: '2 Gobi Paratha + Desi Adrak Chai Combo',
+    hindiName: '2 गोभी पराठा + देसी अदरक चाय कॉम्बो (सॉस/रायता)',
+    category: 'breakfast_snacks',
+    categoryLabel: 'नाश्ता एवं स्नैक्स',
+    portions: [{ size: 'Standard', listingPrice: 239, vendorPayoutRate: 75 }],
+    inStock: true
+  },
+  {
+    id: 'combo_mix_veg_paratha_chai',
+    name: '2 Mix Veg Paratha + Desi Adrak Chai Combo',
+    hindiName: '2 मिक्स वेज पराठा + देसी अदरक चाय कॉम्बो',
+    category: 'breakfast_snacks',
+    categoryLabel: 'नाश्ता एवं स्नैक्स',
+    portions: [{ size: 'Standard', listingPrice: 229, vendorPayoutRate: 70 }],
+    inStock: true
+  },
+  {
+    id: 'combo_pyaz_paratha_chai',
+    name: '2 Pyaz (Onion) Paratha + Desi Adrak Chai Combo',
+    hindiName: '2 प्याज पराठा + देसी अदरक चाय कॉम्बो',
+    category: 'breakfast_snacks',
+    categoryLabel: 'नाश्ता एवं स्नैक्स',
+    portions: [{ size: 'Standard', listingPrice: 199, vendorPayoutRate: 65 }],
+    inStock: true
+  },
+  {
+    id: 'combo_butter_ajwain_paratha_chai',
+    name: '2 Butter Ajwain Paratha + Desi Adrak Chai Combo',
+    hindiName: '2 बटर अजवाइन पराठा + देसी चाय कॉम्बो',
+    category: 'breakfast_snacks',
+    categoryLabel: 'नाश्ता एवं स्नैक्स',
+    portions: [{ size: 'Standard', listingPrice: 149, vendorPayoutRate: 50 }],
+    inStock: true
+  },
+  {
+    id: 'combo_upma_chai',
+    name: 'Veg Rawa Upma + Desi Adrak Chai Combo',
+    hindiName: 'वेज रवा उपमा + देसी अदरक चाय कॉम्बो',
+    category: 'breakfast_snacks',
+    categoryLabel: 'नाश्ता एवं स्नैक्स',
+    portions: [{ size: 'Standard', listingPrice: 169, vendorPayoutRate: 55 }],
+    inStock: true
+  },
+  {
+    id: 'combo_chilla_chai',
+    name: 'Veg Chilla (2 Pcs) + Desi Adrak Chai Combo',
+    hindiName: 'वेज चीला (2 पीस) + देसी अदरक चाय कॉम्बो',
+    category: 'breakfast_snacks',
+    categoryLabel: 'नाश्ता एवं स्नैक्स',
+    portions: [{ size: 'Standard', listingPrice: 179, vendorPayoutRate: 60 }],
+    inStock: true
+  },
+  {
+    id: 'combo_kachori_chai',
+    name: 'Aloo Kachori (2 Pcs) + Desi Adrak Chai Combo',
+    hindiName: 'आलू कचौड़ी (2 पीस) + देसी अदरक चाय कॉम्बो',
+    category: 'breakfast_snacks',
+    categoryLabel: 'नाश्ता एवं स्नैक्स',
+    portions: [{ size: 'Standard', listingPrice: 179, vendorPayoutRate: 60 }],
+    inStock: true
+  },
+  {
+    id: 'combo_aloo_chaap_chai',
+    name: 'Aloo Chaap (4 Pcs) + Desi Adrak Chai Combo',
+    hindiName: 'आलू चाप (4 पीस) + देसी चाय कॉम्बो',
+    category: 'breakfast_snacks',
+    categoryLabel: 'नाश्ता एवं स्नैक्स',
+    portions: [{ size: 'Standard', listingPrice: 159, vendorPayoutRate: 55 }],
+    inStock: true
+  },
+  {
+    id: 'combo_cutlet_chai',
+    name: 'Bread Cutlet (4 Pcs) + Desi Adrak Chai Combo',
+    hindiName: 'ब्रेड कटलेट (4 पीस) + देसी चाय कॉम्बो',
+    category: 'breakfast_snacks',
+    categoryLabel: 'नाश्ता एवं स्नैक्स',
+    portions: [{ size: 'Standard', listingPrice: 159, vendorPayoutRate: 55 }],
+    inStock: true
+  },
+  {
+    id: 'combo_sandwich_chai',
+    name: 'Veg Sandwich (2 Pcs) + Desi Adrak Chai Combo',
+    hindiName: 'वेज सैंडविच (2 पीस) + देसी चाय कॉम्बो',
+    category: 'breakfast_snacks',
+    categoryLabel: 'नाश्ता एवं स्नैक्स',
+    portions: [{ size: 'Standard', listingPrice: 149, vendorPayoutRate: 55 }],
+    inStock: true
+  },
+  {
+    id: 'combo_grilled_sandwich_chai',
+    name: 'Veg Grilled Sandwich (2 Pcs) + Desi Adrak Chai Combo',
+    hindiName: 'वेज ग्रिल्ड सैंडविच (2 पीस) + देसी चाय कॉम्बो',
+    category: 'breakfast_snacks',
+    categoryLabel: 'नाश्ता एवं स्नैक्स',
+    portions: [{ size: 'Standard', listingPrice: 179, vendorPayoutRate: 60 }],
+    inStock: true
+  },
+  {
+    id: 'combo_maggi_chai',
+    name: 'Korean Maggi + Desi Adrak Chai Combo',
+    hindiName: 'कोरियन मैगी + देसी अदरक चाय कॉम्बो',
+    category: 'breakfast_snacks',
+    categoryLabel: 'नाश्ता एवं स्नैक्स',
+    portions: [{ size: 'Standard', listingPrice: 179, vendorPayoutRate: 60 }],
+    inStock: true
+  },
+  {
+    id: 'combo_poori_sabji_chai',
+    name: 'Bedmi/Desi Poori Sabji (4 Poori + Aloo) + Chai Combo',
+    hindiName: 'पूरी सब्जी (4 पूरी + आलू रसा) + देसी चाय कॉम्बो',
+    category: 'breakfast_snacks',
+    categoryLabel: 'नाश्ता एवं स्नैक्स',
+    portions: [{ size: 'Standard', listingPrice: 189, vendorPayoutRate: 60 }],
+    inStock: true
+  },
+  {
+    id: 'combo_suji_halwa_poori',
+    name: 'Desi Suji Halwa (250g) + 2 Poori Combo',
+    hindiName: 'देसी सूजी हलवा (250g) + 2 पूरी कॉम्बो',
+    category: 'breakfast_snacks',
+    categoryLabel: 'नाश्ता एवं स्नैक्स',
+    portions: [{ size: 'Standard', listingPrice: 169, vendorPayoutRate: 60 }],
+    inStock: true
+  },
+  {
+    id: 'snack_desi_chai',
+    name: 'Desi Cutting Chai / Special Adrak Elaichi Tea',
+    hindiName: 'देसी स्पेशल अदरक इलायची चाय',
+    category: 'breakfast_snacks',
+    categoryLabel: 'नाश्ता एवं स्नैक्स',
+    portions: [
+      { size: '2 Cup', listingPrice: 99, vendorPayoutRate: 30 },
+      { size: '4 Cup', listingPrice: 169, vendorPayoutRate: 60 },
+      { size: '5 Cup Flask', listingPrice: 199, vendorPayoutRate: 75 }
+    ],
+    inStock: true
+  },
+
+  // =========================================================================
+  // 10. व्रत थाली एवं व्रत स्नैक्स (VRAT SPECIAL)
+  // =========================================================================
   {
     id: 'vrat_delux_thali',
     name: 'Delux Vrat Thali (Samak rice + aloo paneer + 2 kuttu chilla + raita)',
@@ -724,6 +1102,60 @@ export const VENDOR_MASTER_RATE_CARD: VendorRateItem[] = [
     inStock: true
   },
   {
+    id: 'vrat_samak_kuttu_chilla_thali',
+    name: 'Samak Rice Chilla Thali (2 Pc) / Kuttu Atta Chilla Thali (2 Pc)',
+    hindiName: 'समाक राइस चीला थाली (2 पीस) / कुट्टू चीला थाली',
+    category: 'vrat_special',
+    categoryLabel: 'व्रत थाली एवं व्रत स्नैक्स',
+    portions: [{ size: 'Standard', listingPrice: 249, vendorPayoutRate: 85 }],
+    inStock: true
+  },
+  {
+    id: 'vrat_kuttu_chilla_aloo_sabji',
+    name: '4 Pcs Kuttu Chilla + Aloo Sabji + Raita',
+    hindiName: '4 पीस कुट्टू चीला + आलू सब्ज़ी + रायता',
+    category: 'vrat_special',
+    categoryLabel: 'व्रत थाली एवं व्रत स्नैक्स',
+    portions: [{ size: 'Standard', listingPrice: 249, vendorPayoutRate: 85 }],
+    inStock: true
+  },
+  {
+    id: 'vrat_aloo_pakoda_dahi',
+    name: 'Aloo Pakoda with Dahi (250 ml)',
+    hindiName: 'आलू पकोड़ा विथ दही (250 ml)',
+    category: 'vrat_special',
+    categoryLabel: 'व्रत थाली एवं व्रत स्नैक्स',
+    portions: [{ size: 'Standard', listingPrice: 149, vendorPayoutRate: 50 }],
+    inStock: true
+  },
+  {
+    id: 'vrat_samak_pakoda_dahi',
+    name: 'Samak Rice Pakoda with Dahi (250 ml)',
+    hindiName: 'समाक राइस पकोड़ा विथ दही (250 ml)',
+    category: 'vrat_special',
+    categoryLabel: 'व्रत थाली एवं व्रत स्नैक्स',
+    portions: [{ size: 'Standard', listingPrice: 159, vendorPayoutRate: 55 }],
+    inStock: true
+  },
+  {
+    id: 'vrat_kuttu_pakoda_dahi',
+    name: 'Kuttu Atta Pakoda with Dahi (250 ml)',
+    hindiName: 'कुट्टू आटा पकोड़ा विथ दही (250 ml)',
+    category: 'vrat_special',
+    categoryLabel: 'व्रत थाली एवं व्रत स्नैक्स',
+    portions: [{ size: 'Standard', listingPrice: 159, vendorPayoutRate: 55 }],
+    inStock: true
+  },
+  {
+    id: 'vrat_aloo_sabji_kheera_raita',
+    name: 'Aloo ki Sabji with Kheera Raita (250 ml)',
+    hindiName: 'आलू की सब्ज़ी विथ खीरा रायता (250 ml)',
+    category: 'vrat_special',
+    categoryLabel: 'व्रत थाली एवं व्रत स्नैक्स',
+    portions: [{ size: 'Standard', listingPrice: 139, vendorPayoutRate: 50 }],
+    inStock: true
+  },
+  {
     id: 'vrat_singhara_halwa',
     name: 'Singhara Atta Halwa (250 ml)',
     hindiName: 'सिंघाड़ा आटा हलवा (250 ml)',
@@ -732,8 +1164,19 @@ export const VENDOR_MASTER_RATE_CARD: VendorRateItem[] = [
     portions: [{ size: 'Standard', listingPrice: 249, vendorPayoutRate: 85 }],
     inStock: true
   },
+  {
+    id: 'vrat_combo_sabudana_chai',
+    name: 'Sabudana Khichdi + Desi Chai Vrat Combo',
+    hindiName: 'साबूदाना खिचड़ी + व्रत स्पेशल चाय कॉम्बो',
+    category: 'vrat_special',
+    categoryLabel: 'व्रत थाली एवं व्रत स्नैक्स',
+    portions: [{ size: 'Standard', listingPrice: 249, vendorPayoutRate: 85 }],
+    inStock: true
+  },
 
-  // --- BREADS, RICE & DESSERTS ---
+  // =========================================================================
+  // 11. ब्रेड्स, चावल और मीठा (BREADS, RICE & DESSERTS)
+  // =========================================================================
   {
     id: 'brd_tawa_roti',
     name: 'Tawa Roti / Butter Tawa Roti',
@@ -741,8 +1184,8 @@ export const VENDOR_MASTER_RATE_CARD: VendorRateItem[] = [
     category: 'breads_desserts',
     categoryLabel: 'ब्रेड्स, चावल और मीठा',
     portions: [
-      { size: 'Per Pc', listingPrice: 12, vendorPayoutRate: 4 },
-      { size: 'Quarter', listingPrice: 15, vendorPayoutRate: 5 } // Butter
+      { size: 'Plain Tawa Roti', listingPrice: 12, vendorPayoutRate: 4 },
+      { size: 'Butter Tawa Roti', listingPrice: 15, vendorPayoutRate: 5 }
     ],
     inStock: true
   },
@@ -762,21 +1205,21 @@ export const VENDOR_MASTER_RATE_CARD: VendorRateItem[] = [
     category: 'breads_desserts',
     categoryLabel: 'ब्रेड्स, चावल और मीठा',
     portions: [
-      { size: '300g', listingPrice: 79, vendorPayoutRate: 50 },
-      { size: 'Standard', listingPrice: 89, vendorPayoutRate: 50 } // Jeera Rice
+      { size: 'Plain Rice (300g)', listingPrice: 79, vendorPayoutRate: 50 },
+      { size: 'Jeera Rice (300g)', listingPrice: 89, vendorPayoutRate: 50 }
     ],
     inStock: true
   },
   {
-    id: 'snack_desi_chai',
-    name: 'Desi Cutting Chai / Special Tea',
-    hindiName: 'देसी स्पेशल चाय',
-    category: 'breakfast_snacks',
-    categoryLabel: 'नाश्ता व स्नैक्स',
+    id: 'brd_sweet_seviyan',
+    name: 'Sweet Seviyan',
+    hindiName: 'मीठी सेवइयां',
+    category: 'breads_desserts',
+    categoryLabel: 'ब्रेड्स, चावल और मीठा',
     portions: [
-      { size: '2 Cup', listingPrice: 99, vendorPayoutRate: 30 },
-      { size: '4 Cup', listingPrice: 169, vendorPayoutRate: 60 },
-      { size: '5 Cup', listingPrice: 199, vendorPayoutRate: 75 }
+      { size: '300g', listingPrice: 149, vendorPayoutRate: 50 },
+      { size: '500g', listingPrice: 229, vendorPayoutRate: 80 },
+      { size: '700g', listingPrice: 329, vendorPayoutRate: 115 }
     ],
     inStock: true
   },

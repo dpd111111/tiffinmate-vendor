@@ -9,15 +9,33 @@ function RootApp() {
       if (typeof window !== 'undefined') {
         const u = new URL(window.location.href);
         const appParam = u.searchParams.get('app');
-        if (appParam === 'owner' || window.location.pathname.includes('/owner')) {
+        if (appParam === 'owner' || window.location.pathname.startsWith('/owner')) {
           return 'owner';
         }
-        const saved = localStorage.getItem('tiffin_active_app_mode');
-        if (saved === 'owner') return 'owner';
+        if (appParam === 'vendor' || window.location.pathname.startsWith('/vendor')) {
+          return 'vendor';
+        }
       }
     } catch {}
     return 'vendor';
   });
+
+  useEffect(() => {
+    const handleUrlChange = () => {
+      try {
+        const u = new URL(window.location.href);
+        const appParam = u.searchParams.get('app');
+        if (appParam === 'owner' || window.location.pathname.startsWith('/owner')) {
+          setCurrentApp('owner');
+        } else {
+          setCurrentApp('vendor');
+        }
+      } catch {}
+    };
+
+    window.addEventListener('popstate', handleUrlChange);
+    return () => window.removeEventListener('popstate', handleUrlChange);
+  }, []);
 
   useEffect(() => {
     try {
@@ -32,7 +50,6 @@ function RootApp() {
         const u = new URL(window.location.href);
         u.searchParams.set('app', currentApp);
         window.history.replaceState({}, '', u.toString());
-        localStorage.setItem('tiffin_active_app_mode', currentApp);
       }
     } catch {}
   }, [currentApp]);

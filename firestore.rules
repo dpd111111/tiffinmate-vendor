@@ -20,68 +20,67 @@ service cloud.firestore {
 
     // Public Customer Reviews & Testimonials
     match /public_reviews/{reviewId} {
-      allow read: if true;
-      allow create: if isValidId(reviewId) &&
-                    request.resource.data.rating is number &&
-                    request.resource.data.rating >= 1 &&
-                    request.resource.data.rating <= 5;
-      allow update, delete: if isSignedIn() && (isOwnerEmail() || resource.data.userId == request.auth.uid);
+      allow read, write: if true;
     }
 
     // Staff Roster
     match /staff/{staffId} {
-      allow read: if true;
-      allow write: if isSignedIn() || true; // Managed by server sync and admin panel
+      allow read, write: if true;
     }
 
     // Customers Collection
     match /customers/{customerId} {
-      allow read, write: if isValidId(customerId);
+      allow read, write: if true;
     }
 
     // Subscriptions Collection
     match /subscriptions/{subscriptionId} {
-      allow read, write: if isValidId(subscriptionId);
+      allow read, write: if true;
     }
 
     // Daily Deliveries & Dispatches
     match /deliveries/{deliveryId} {
-      allow read, write: if isValidId(deliveryId);
+      allow read, write: if true;
     }
 
     // Orders & Billing Records
     match /orders/{orderId} {
-      allow read, write: if isValidId(orderId);
+      allow read, write: if true;
     }
 
     // Kitchen Packing Tasks
     match /packing_tasks/{taskId} {
-      allow read, write: if isValidId(taskId);
+      allow read, write: if true;
     }
 
     // Doorstep Cash/UPI Payment Requests
     match /doorstep_payment_requests/{reqId} {
-      allow read, write: if isValidId(reqId);
+      allow read, write: if true;
     }
 
     // Customer Financial Ledger Entries
     match /ledger_entries/{entryId} {
-      allow read, write: if isValidId(entryId);
+      allow read, write: if true;
     }
 
     // Kitchen to Rider Handover Records
     match /KITCHEN_HANDOVERS/{handoverId} {
-      allow read, write: if isValidId(handoverId);
+      allow read, write: if true;
     }
 
     // Deleted Staff Registry Tombstones
     match /deleted_staff_registry/{regId} {
-      allow read, write: if isValidId(regId);
+      allow read, write: if true;
     }
 
     // Secure Server Staff Vault
     match /server_staff_vault/{vaultId} {
-      allow read, write: if isValidId(vaultId);
+      allow read, write: if true;
+    }
+
+    // App Snapshots Collection for Permanent Backup
+    match /app_snapshots/{snapId} {
+      allow read, write: if true;
     }
 
     // Connection Healthcheck Ping Document

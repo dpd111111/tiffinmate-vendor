@@ -1,131 +1,60 @@
 {
   "vendorId": "NIR8800",
-  "orders": [
-    {
-      "id": "ord_3p_1793215126668_fzss",
-      "orderNumber": "#ZOM-TEST-99",
-      "source": "zomato",
-      "platformOrderId": "#ZOM-TEST-99",
-      "items": [
-        {
-          "itemId": "tea",
-          "itemName": "Special Tea / Chai",
-          "hindiName": "चाय (Special Tea)",
-          "portionSize": "Standard",
-          "quantity": 2,
-          "listingPrice": 99,
-          "vendorPayoutRate": 40,
-          "totalVendorPayout": 80
-        }
-      ],
-      "itemId": "tea",
-      "itemName": "Special Tea / Chai (Standard) x2",
-      "portionSize": "Standard",
-      "quantity": 2,
-      "listingPrice": 198,
-      "vendorPayoutRate": 40,
-      "totalVendorPayout": 80,
-      "status": "preparing",
-      "createdAt": "2026-10-28T19:18:46.668Z",
-      "timeSlot": "Immediate Dispatch (15-20 mins)",
-      "riderName": "ZOMATO Rider Assigned",
-      "riderEta": "12 mins",
-      "notes": "",
-      "payoutCreditedToWallet": false,
-      "isMultiItem": false
-    }
-  ],
-  "transactions": [
-    {
-      "id": "txn_payout_1793357878492",
-      "date": "2026-10-30",
-      "type": "payout_disbursed",
-      "amount": 10,
-      "description": "Monday Settlement Paid via UPI (UTR: UPI/TEST991823912) - Weekly Test Settlement",
-      "referenceId": "UPI/TEST991823912",
-      "utrNumber": "UPI/TEST991823912",
-      "balanceAfter": 50,
-      "status": "settled",
-      "ownerApprovedBy": "Owner / Navovia Next HQ",
-      "cyclePeriod": "Weekly Settlement"
-    },
-    {
-      "id": "txn_ded_1793357878484",
-      "date": "2026-10-30",
-      "type": "refund_deduction",
-      "amount": 20,
-      "description": "Refund / Cancellation Deduction: Order ##ZOM-TEST-99 - Spillage / Delay Test Deduction",
-      "referenceId": "#ZOM-TEST-99",
-      "balanceAfter": 60,
-      "status": "settled",
-      "ownerApprovedBy": "Owner Operations Desk"
-    }
-  ],
-  "inventory": [
-    {
-      "id": "inv_atta",
-      "name": "Chakki Fresh Atta",
-      "hindiName": "चक्की फ्रेश आटा",
-      "category": "raw_materials",
-      "currentStock": 45,
-      "unit": "KG",
-      "minThreshold": 15,
-      "status": "sufficient",
-      "lastUpdated": "2026-10-30T00:00:00.000Z"
-    },
-    {
-      "id": "inv_rice",
-      "name": "Basmati Rice",
-      "hindiName": "बासमती चावल",
-      "category": "raw_materials",
-      "currentStock": 30,
-      "unit": "KG",
-      "minThreshold": 10,
-      "status": "sufficient",
-      "lastUpdated": "2026-10-30T00:00:00.000Z"
-    },
-    {
-      "id": "inv_ghee",
-      "name": "Pure Desi Cow Ghee",
-      "hindiName": "शुद्ध देसी गाय का घी",
-      "category": "dairy",
-      "currentStock": 12,
-      "unit": "Ltr",
-      "minThreshold": 5,
-      "status": "sufficient",
-      "lastUpdated": "2026-10-30T00:00:00.000Z"
-    },
-    {
-      "id": "inv_boxes",
-      "name": "3-Compartment Meal Trays",
-      "hindiName": "3-कंपार्टमेंट मील ट्रे बॉक्स",
-      "category": "packaging",
-      "currentStock": 250,
-      "unit": "Pcs",
-      "minThreshold": 50,
-      "status": "sufficient",
-      "lastUpdated": "2026-10-30T00:00:00.000Z"
-    }
-  ],
+  "orders": [],
+  "transactions": [],
+  "inventory": [],
+  "refundDeductions": [],
+  "pendingDishes": [],
+  "payoutRequests": [],
+  "incentiveConfig": {
+    "enabled": true,
+    "tiers": [
+      {
+        "id": "tier_bronze",
+        "milestoneMeals": 25,
+        "bonusAmount": 150,
+        "title": "ब्राउन स्टार बोनस",
+        "badge": "🥉",
+        "description": "25 टिफिन डिलीवरी पर ₹150 बोनस"
+      },
+      {
+        "id": "tier_silver",
+        "milestoneMeals": 50,
+        "bonusAmount": 350,
+        "title": "सिल्वर स्टार बोनस",
+        "badge": "🥈",
+        "description": "50 टिफिन डिलीवरी पर ₹350 बोनस"
+      },
+      {
+        "id": "tier_gold",
+        "milestoneMeals": 100,
+        "bonusAmount": 800,
+        "title": "गोल्ड स्टार बोनस",
+        "badge": "🥇",
+        "description": "100 टिफिन डिलीवरी पर ₹800 बोनस"
+      },
+      {
+        "id": "tier_platinum",
+        "milestoneMeals": 200,
+        "bonusAmount": 1800,
+        "title": "प्लैटिनम स्टार बोनस",
+        "badge": "💎",
+        "description": "200+ टिफिन डिलीवरी पर ₹1800 बोनस"
+      }
+    ],
+    "onTimeBonusPerMeal": 5,
+    "zeroComplaintWeeklyBonus": 250,
+    "dailyZeroCancellationBonus": 50,
+    "weeklyHundredPercentOnlineBonus": 300
+  },
+  "incentiveHistory": [],
   "wallet": {
-    "totalLifetimeEarned": 80,
-    "currentBalance": 50,
+    "totalLifetimeEarned": 0,
+    "currentBalance": 0,
     "minimumReserve": 2000,
     "tenDayHoldAmount": 0,
-    "lastSettlementDate": "2026-10-30",
+    "lastSettlementDate": "None",
     "billingCycle": "Friday to Thursday",
     "payoutDay": "Monday"
-  },
-  "refundDeductions": [
-    {
-      "id": "ded_1793357878484",
-      "orderId": "#ZOM-TEST-99",
-      "customerRefundAmount": 50,
-      "vendorCutDeducted": 20,
-      "reason": "Spillage / Delay Test Deduction",
-      "timestamp": "2026-10-30T10:57:58.484Z",
-      "status": "deducted"
-    }
-  ],
-  "pendingDishes": []
+  }
 }
